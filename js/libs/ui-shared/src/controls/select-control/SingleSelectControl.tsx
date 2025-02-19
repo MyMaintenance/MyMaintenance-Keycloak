@@ -32,6 +32,7 @@ export const SingleSelectControl = <
   options,
   controller,
   labelIcon,
+  isDisabled,
   ...rest
 }: SelectControlProps<T, P>) => {
   const {
@@ -53,6 +54,7 @@ export const SingleSelectControl = <
         {...controller}
         name={name}
         control={control}
+        disabled
         render={({ field: { onChange, value } }) => (
           <Select
             {...rest}
@@ -78,6 +80,7 @@ export const SingleSelectControl = <
                 isFullWidth
                 status={get(errors, name) ? MenuToggleStatus.danger : undefined}
                 aria-label="toggle"
+                isDisabled={isDisabled}
               >
                 {isSelectBasedOptions(options)
                   ? options.find(

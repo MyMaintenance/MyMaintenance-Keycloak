@@ -7,6 +7,7 @@ import {
 } from "react-hook-form";
 import { SingleSelectControl } from "./SingleSelectControl";
 import { TypeaheadSelectControl } from "./TypeaheadSelectControl";
+import { Help } from "../../context/HelpContext";
 
 type Variant = `${SelectVariant}`;
 
@@ -66,10 +67,24 @@ export const SelectControl = <
   P extends FieldPath<T> = FieldPath<T>,
 >({
   variant = SelectVariant.single,
+  isDisabled,
+  labelIcon,
   ...rest
-}: SelectControlProps<T, P>) =>
-  variant === SelectVariant.single ? (
-    <SingleSelectControl {...rest} />
-  ) : (
-    <TypeaheadSelectControl {...rest} variant={variant} />
-  );
+}: SelectControlProps<T, P>) => (
+  <Help>
+    {variant === SelectVariant.single ? (
+      <SingleSelectControl
+        {...rest}
+        isDisabled={isDisabled}
+        labelIcon={labelIcon}
+      />
+    ) : (
+      <TypeaheadSelectControl
+        {...rest}
+        variant={variant}
+        isDisabled={isDisabled}
+        labelIcon={labelIcon}
+      />
+    )}
+  </Help>
+);
