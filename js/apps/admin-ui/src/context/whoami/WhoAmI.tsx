@@ -11,7 +11,7 @@ import { PropsWithChildren, useState } from "react";
 import { useAdminClient } from "../../admin-client";
 import { DEFAULT_LOCALE, i18n } from "../../i18n/i18n";
 import { useRealm } from "../realm-context/RealmContext";
-import jwt_decode from "jwt-decode";
+import { jwtDecode } from "jwt-decode";
 import { getMapping } from "../../components/role-mapping/queries";
 
 // can be replaced with https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/Locale/getTextInfo
@@ -189,7 +189,7 @@ export const WhoAmIContextProvider = ({ children }: PropsWithChildren) => {
       });
 
       const accessToken = await adminClient.getAccessToken();
-      const decodedAccessToken = accessToken ? jwt_decode(accessToken) : null;
+      const decodedAccessToken = accessToken ? jwtDecode(accessToken) : null;
       const userId = me.userId;
 
       const userInfo = await adminClient.users.findOne({ id: userId });
