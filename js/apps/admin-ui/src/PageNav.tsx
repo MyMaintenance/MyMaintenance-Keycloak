@@ -18,12 +18,18 @@ import { toPage } from "./page/routes";
 import { AddRealmRoute } from "./realm/routes/AddRealm";
 import { routes } from "./routes";
 import useIsFeatureEnabled, { Feature } from "./utils/useIsFeatureEnabled";
+import { useWhoAmI } from "./context/whoami/WhoAmI";
 
 import "./page-nav.css";
 
-type LeftNavProps = { title: string; path: string; id?: string };
+type LeftNavProps = {
+  title: string;
+  path: string;
+  id?: string;
+  isVisible?: boolean;
+};
 
-const LeftNav = ({ title, path, id }: LeftNavProps) => {
+const LeftNav = ({ title, path, id, isVisible = true }: LeftNavProps) => {
   const { t } = useTranslation();
   const { hasAccess } = useAccess();
   const { realm } = useRealm();
@@ -40,6 +46,10 @@ const LeftNav = ({ title, path, id }: LeftNavProps) => {
       : hasAccess(route.handle.access));
 
   if (!accessAllowed) {
+    return null;
+  }
+
+  if (!isVisible) {
     return null;
   }
 
@@ -96,6 +106,18 @@ export const PageNav = () => {
 
   const isOnAddRealm = !!useMatch(AddRealmRoute.path);
 
+  const { whoAmI, isLoading } = useWhoAmI();
+
+  if (isLoading || !whoAmI) {
+    return null;
+  }
+
+  const isKeycloakAdmin = whoAmI.isKeycloakAdmin();
+  const isClientAdminWithSsoPermission =
+    whoAmI.isClientAdminWithSsoPermission();
+  const isClientAdminWithLdapPermission =
+    whoAmI.isClientAdminWithLdapPermission();
+
   return (
     <PageSidebar className="keycloak__page_nav__nav">
       <PageSidebarBody>
@@ -112,25 +134,69 @@ export const PageNav = () => {
                 realmRepresentation?.organizationsEnabled && (
                   <LeftNav title="organizations" path="/organizations" />
                 )}
-              <LeftNav title="clients" path="/clients" />
-              <LeftNav title="clientScopes" path="/client-scopes" />
-              <LeftNav title="realmRoles" path="/roles" />
+              <LeftNav
+                title="clients"
+                path="/clients"
+                isVisible={isKeycloakAdmin}
+              />
+              <LeftNav
+                title="clientScopes"
+                path="/client-scopes"
+                isVisible={isKeycloakAdmin}
+              />
+              <LeftNav
+                title="realmRoles"
+                path="/roles"
+                isVisible={isKeycloakAdmin}
+              />
               <LeftNav title="users" path="/users" />
-              <LeftNav title="groups" path="/groups" />
-              <LeftNav title="sessions" path="/sessions" />
-              <LeftNav title="events" path="/events" />
+              <LeftNav
+                title="groups"
+                path="/groups"
+                isVisible={isKeycloakAdmin}
+              />
+              <LeftNav
+                title="sessions"
+                path="/sessions"
+                isVisible={isKeycloakAdmin}
+              />
+              <LeftNav
+                title="events"
+                path="/events"
+                isVisible={isKeycloakAdmin}
+              />
             </NavGroup>
           )}
 
           {showConfigure && !isOnAddRealm && (
             <NavGroup aria-label={t("configure")} title={t("configure")}>
-              <LeftNav title="realmSettings" path="/realm-settings" />
-              <LeftNav title="authentication" path="/authentication" />
-              <LeftNav title="identityProviders" path="/identity-providers" />
-              <LeftNav title="userFederation" path="/user-federation" />
+              <LeftNav
+                title="realmSettings"
+                path="/realm-settings"
+                isVisible={isKeycloakAdmin}
+              />
+              <LeftNav
+                title="authentication"
+                path="/authentication"
+                isVisible={isKeycloakAdmin}
+              />
+              <LeftNav
+                title="identityProviders"
+                path="/identity-providers"
+                isVisible={isKeycloakAdmin || isClientAdminWithSsoPermission}
+              />
+              <LeftNav
+                title="userFederation"
+                path="/user-federation"
+                isVisible={isKeycloakAdmin || isClientAdminWithLdapPermission}
+              />
               {isFeatureEnabled(Feature.AdminFineGrainedAuthzV2) &&
                 realmRepresentation?.adminPermissionsEnabled && (
-                  <LeftNav title="permissions" path="/permissions" />
+                  <LeftNav
+                    title="permissions"
+                    path="/permissions"
+                    isVisible={isKeycloakAdmin}
+                  />
                 )}
               {isFeatureEnabled(Feature.DeclarativeUI) &&
                 pages?.map((p) => (
@@ -139,6 +205,7 @@ export const PageNav = () => {
                     title={p.id}
                     path={toPage({ providerId: p.id }).pathname!}
                     id="/page-section"
+                    isVisible={isKeycloakAdmin}
                   />
                 ))}
             </NavGroup>
