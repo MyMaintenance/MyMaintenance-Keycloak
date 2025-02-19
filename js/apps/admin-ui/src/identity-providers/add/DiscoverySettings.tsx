@@ -11,6 +11,7 @@ import {
 import { DefaultSwitchControl } from "../../components/SwitchControl";
 
 import "./discovery-settings.css";
+import { useWhoAmI } from "../../context/whoami/WhoAmI";
 
 const PKCE_METHODS = ["plain", "S256"] as const;
 
@@ -34,6 +35,15 @@ const Fields = ({ readOnly }: DiscoverySettingsProps) => {
     control,
     name: "config.pkceEnabled",
   });
+
+  const { whoAmI, isLoading } = useWhoAmI();
+
+  if (isLoading || !whoAmI) {
+    return null;
+  }
+
+  const isClientAdminWithSsoPermission =
+    whoAmI.isClientAdminWithSsoPermission();
 
   return (
     <div className="pf-v5-c-form pf-m-horizontal">
@@ -73,7 +83,7 @@ const Fields = ({ readOnly }: DiscoverySettingsProps) => {
       <DefaultSwitchControl
         name="config.validateSignature"
         label={t("validateSignature")}
-        isDisabled={readOnly}
+        isDisabled={readOnly || isClientAdminWithSsoPermission}
         stringify
       />
       {validateSignature === "true" && (
@@ -81,7 +91,7 @@ const Fields = ({ readOnly }: DiscoverySettingsProps) => {
           <DefaultSwitchControl
             name="config.useJwksUrl"
             label={t("useJwksUrl")}
-            isDisabled={readOnly}
+            isDisabled={readOnly || isClientAdminWithSsoPermission}
             stringify
           />
           {useJwks === "true" ? (
@@ -108,7 +118,7 @@ const Fields = ({ readOnly }: DiscoverySettingsProps) => {
       <DefaultSwitchControl
         name="config.pkceEnabled"
         label={t("pkceEnabled")}
-        isDisabled={readOnly}
+        isDisabled={readOnly || isClientAdminWithSsoPermission}
         stringify
       />
       {isPkceEnabled === "true" && (

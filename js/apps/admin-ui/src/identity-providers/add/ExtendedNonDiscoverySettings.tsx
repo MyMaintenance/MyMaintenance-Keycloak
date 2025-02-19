@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import { FormGroupField } from "../component/FormGroupField";
 import { SwitchField } from "../component/SwitchField";
 import { TextField } from "../component/TextField";
+import { useWhoAmI } from "../../context/whoami/WhoAmI";
 
 const promptOptions = {
   unspecified: "",
@@ -32,6 +33,15 @@ export const ExtendedNonDiscoverySettings = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [promptOpen, setPromptOpen] = useState(false);
 
+  const { whoAmI, isLoading } = useWhoAmI();
+
+  if (isLoading || !whoAmI) {
+    return null;
+  }
+
+  const isClientAdminWithSsoPermission =
+    whoAmI.isClientAdminWithSsoPermission();
+
   return (
     <ExpandableSection
       toggleText={t("advanced")}
@@ -39,25 +49,52 @@ export const ExtendedNonDiscoverySettings = () => {
       isExpanded={isExpanded}
     >
       <Form isHorizontal>
-        <SwitchField label="passLoginHint" field="config.loginHint" />
-        <SwitchField label="passMaxAge" field="config.passMaxAge" />
-        <SwitchField label="passCurrentLocale" field="config.uiLocales" />
+        <SwitchField
+          label="passLoginHint"
+          field="config.loginHint"
+          isReadOnly={isClientAdminWithSsoPermission}
+        />
+        <SwitchField
+          label="passMaxAge"
+          field="config.passMaxAge"
+          isReadOnly={isClientAdminWithSsoPermission}
+        />
+        <SwitchField
+          label="passCurrentLocale"
+          field="config.uiLocales"
+          isReadOnly={isClientAdminWithSsoPermission}
+        />
         <SwitchField
           field="config.backchannelSupported"
           label="backchannelLogout"
+          isReadOnly={isClientAdminWithSsoPermission}
         />
         <SwitchField
           field="config.sendIdTokenOnLogout"
           label="sendIdTokenOnLogout"
+          isReadOnly={isClientAdminWithSsoPermission}
           defaultValue={"true"}
         />
         <SwitchField
           field="config.sendClientIdOnLogout"
           label="sendClientIdOnLogout"
+          isReadOnly={isClientAdminWithSsoPermission}
         />
-        <SwitchField field="config.disableUserInfo" label="disableUserInfo" />
-        <SwitchField field="config.disableNonce" label="disableNonce" />
-        <TextField field="config.defaultScope" label="scopes" />
+        <SwitchField
+          field="config.disableUserInfo"
+          label="disableUserInfo"
+          isReadOnly={isClientAdminWithSsoPermission}
+        />
+        <SwitchField
+          field="config.disableNonce"
+          label="disableNonce"
+          isReadOnly={isClientAdminWithSsoPermission}
+        />
+        <TextField
+          field="config.defaultScope"
+          label="scopes"
+          isReadOnly={isClientAdminWithSsoPermission}
+        />
         <FormGroupField label="prompt">
           <Controller
             name="config.prompt"
@@ -75,6 +112,7 @@ export const ExtendedNonDiscoverySettings = () => {
                 variant={SelectVariant.single}
                 aria-label={t("prompt")}
                 isOpen={promptOpen}
+                isDisabled={isClientAdminWithSsoPermission}
               >
                 {Object.entries(promptOptions).map(([key, val]) => (
                   <SelectOption
@@ -92,6 +130,7 @@ export const ExtendedNonDiscoverySettings = () => {
         <SwitchField
           field="config.acceptsPromptNoneForwardFromClient"
           label="acceptsPromptNone"
+          isReadOnly={isClientAdminWithSsoPermission}
         />
         <FormGroup
           label={t("allowedClockSkew")}
@@ -117,6 +156,7 @@ export const ExtendedNonDiscoverySettings = () => {
                   max={2147483}
                   value={v}
                   readOnly
+                  isDisabled={isClientAdminWithSsoPermission}
                   onPlus={() => field.onChange(v + 1)}
                   onMinus={() => field.onChange(v - 1)}
                   onChange={(event) => {
@@ -130,7 +170,11 @@ export const ExtendedNonDiscoverySettings = () => {
             }}
           />
         </FormGroup>
-        <TextField field="config.forwardParameters" label="forwardParameters" />
+        <TextField
+          field="config.forwardParameters"
+          label="forwardParameters"
+          isReadOnly={isClientAdminWithSsoPermission}
+        />
       </Form>
     </ExpandableSection>
   );

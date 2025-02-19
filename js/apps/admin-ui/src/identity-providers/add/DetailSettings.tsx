@@ -66,6 +66,7 @@ import { OIDCGeneralSettings } from "./OIDCGeneralSettings";
 import { ReqAuthnConstraints } from "./ReqAuthnConstraintsSettings";
 import { SamlGeneralSettings } from "./SamlGeneralSettings";
 import { AdminEvents } from "../../events/AdminEvents";
+import { useWhoAmI } from "../../context/whoami/WhoAmI";
 
 type HeaderProps = {
   onChange: (value: boolean) => void;
@@ -162,6 +163,20 @@ const Header = ({ onChange, value, save, toggleDeleteDialog }: HeaderProps) => {
     }
   };
 
+  const { whoAmI, isLoading } = useWhoAmI();
+
+  if (isLoading || !whoAmI) {
+    return null;
+  }
+
+  const isKeycloakAdmin = whoAmI.isKeycloakAdmin();
+  // const isClientAdminWithSsoPermission =
+  //   whoAmI.isClientAdminWithSsoPermission();
+
+  // if (!isKeycloakAdmin && !isClientAdminWithSsoPermission) {
+  //   return <h3 style={{ padding: "16px" }}>Access Denied</h3>;
+  // }
+
   return (
     <>
       <DisableConfirm />
@@ -174,45 +189,47 @@ const Header = ({ onChange, value, save, toggleDeleteDialog }: HeaderProps) => {
             : "",
         )}
         divider={false}
-        dropdownItems={[
-          ...(provider?.providerId?.includes("saml") &&
-          validateSignature === "true" &&
-          useMetadataDescriptorUrl === "true" &&
-          metadataDescriptorUrl &&
-          !formState.isDirty &&
-          value
-            ? [
-                <DropdownItem
-                  key="reloadKeys"
-                  onClick={() => reloadSamlKeys(provider.alias!)}
-                >
-                  {t("reloadKeys")}
-                </DropdownItem>,
-              ]
-            : provider?.providerId?.includes("saml") &&
-                validateSignature === "true" &&
-                useMetadataDescriptorUrl !== "true" &&
-                metadataDescriptorUrl &&
-                !formState.isDirty
+        {...(isKeycloakAdmin && {
+          dropdownItems: [
+            ...(provider?.providerId?.includes("saml") &&
+            validateSignature === "true" &&
+            useMetadataDescriptorUrl === "true" &&
+            metadataDescriptorUrl &&
+            !formState.isDirty &&
+            value
               ? [
                   <DropdownItem
-                    key="importKeys"
-                    onClick={() =>
-                      importSamlKeys(
-                        provider.providerId!,
-                        metadataDescriptorUrl,
-                      )
-                    }
+                    key="reloadKeys"
+                    onClick={() => reloadSamlKeys(provider.alias!)}
                   >
-                    {t("importKeys")}
+                    {t("reloadKeys")}
                   </DropdownItem>,
                 ]
-              : []),
-          <Divider key="separator" />,
-          <DropdownItem key="delete" onClick={() => toggleDeleteDialog()}>
-            {t("delete")}
-          </DropdownItem>,
-        ]}
+              : provider?.providerId?.includes("saml") &&
+                  validateSignature === "true" &&
+                  useMetadataDescriptorUrl !== "true" &&
+                  metadataDescriptorUrl &&
+                  !formState.isDirty
+                ? [
+                    <DropdownItem
+                      key="importKeys"
+                      onClick={() =>
+                        importSamlKeys(
+                          provider.providerId!,
+                          metadataDescriptorUrl,
+                        )
+                      }
+                    >
+                      {t("importKeys")}
+                    </DropdownItem>,
+                  ]
+                : []),
+            <Divider key="separator" />,
+            <DropdownItem key="delete" onClick={() => toggleDeleteDialog()}>
+              {t("delete")}
+            </DropdownItem>,
+          ],
+        })}
         isEnabled={value}
         onToggle={(value) => {
           if (!value) {
@@ -403,6 +420,15 @@ export default function DetailSettings() {
     },
   });
 
+  const { whoAmI, isLoading } = useWhoAmI();
+
+  if (isLoading || !whoAmI) {
+    return null;
+  }
+
+  const isClientAdminWithSsoPermission =
+    whoAmI.isClientAdminWithSsoPermission();
+
   if (!provider) {
     return <KeycloakSpinner />;
   }
@@ -533,93 +559,96 @@ export default function DetailSettings() {
               sections={sections}
             />
           </Tab>
-          <Tab
-            id="mappers"
-            data-testid="mappers-tab"
-            title={<TabTitleText>{t("mappers")}</TabTitleText>}
-            {...mappersTab}
-          >
-            <KeycloakDataTable
-              emptyState={
-                <ListEmptyState
-                  message={t("noMappers")}
-                  instructions={t("noMappersInstructions")}
-                  primaryActionText={t("addMapper")}
-                  onPrimaryAction={() =>
-                    navigate(
-                      toIdentityProviderAddMapper({
-                        realm,
-                        alias: alias!,
-                        providerId: provider.providerId!,
-                        tab: "mappers",
-                      }),
-                    )
-                  }
-                />
-              }
-              loader={loader}
-              key={key}
-              ariaLabelKey="mappersList"
-              searchPlaceholderKey="searchForMapper"
-              toolbarItem={
-                <ToolbarItem>
-                  <Button
-                    id="add-mapper-button"
-                    component={(props) => (
-                      <Link
-                        {...props}
-                        to={toIdentityProviderAddMapper({
+          {!isClientAdminWithSsoPermission && (
+            <Tab
+              id="mappers"
+              data-testid="mappers-tab"
+              title={<TabTitleText>{t("mappers")}</TabTitleText>}
+              {...mappersTab}
+            >
+              <KeycloakDataTable
+                emptyState={
+                  <ListEmptyState
+                    message={t("noMappers")}
+                    instructions={t("noMappersInstructions")}
+                    primaryActionText={t("addMapper")}
+                    onPrimaryAction={() =>
+                      navigate(
+                        toIdentityProviderAddMapper({
                           realm,
                           alias: alias!,
                           providerId: provider.providerId!,
                           tab: "mappers",
-                        })}
-                      />
-                    )}
-                    data-testid="addMapper"
-                  >
-                    {t("addMapper")}
-                  </Button>
-                </ToolbarItem>
-              }
-              columns={[
-                {
-                  name: "name",
-                  displayKey: "name",
-                  cellRenderer: (row) => (
-                    <MapperLink {...row} provider={provider} />
-                  ),
-                },
-                {
-                  name: "category",
-                  displayKey: "category",
-                },
-                {
-                  name: "type",
-                  displayKey: "type",
-                },
-              ]}
-              actions={[
-                {
-                  title: t("delete"),
-                  onRowClick: (mapper) => {
-                    setSelectedMapper(mapper);
-                    toggleDeleteMapperDialog();
+                        }),
+                      )
+                    }
+                  />
+                }
+                loader={loader}
+                key={key}
+                ariaLabelKey="mappersList"
+                searchPlaceholderKey="searchForMapper"
+                toolbarItem={
+                  <ToolbarItem>
+                    <Button
+                      id="add-mapper-button"
+                      component={(props) => (
+                        <Link
+                          {...props}
+                          to={toIdentityProviderAddMapper({
+                            realm,
+                            alias: alias!,
+                            providerId: provider.providerId!,
+                            tab: "mappers",
+                          })}
+                        />
+                      )}
+                      data-testid="addMapper"
+                    >
+                      {t("addMapper")}
+                    </Button>
+                  </ToolbarItem>
+                }
+                columns={[
+                  {
+                    name: "name",
+                    displayKey: "name",
+                    cellRenderer: (row) => (
+                      <MapperLink {...row} provider={provider} />
+                    ),
                   },
-                } as Action<IdPWithMapperAttributes>,
-              ]}
-            />
-          </Tab>
-          {isFeatureEnabled(Feature.AdminFineGrainedAuthz) && (
-            <Tab
-              id="permissions"
-              data-testid="permissionsTab"
-              title={<TabTitleText>{t("permissions")}</TabTitleText>}
-              {...permissionsTab}
-            >
-              <PermissionsTab id={alias} type="identityProviders" />
+                  {
+                    name: "category",
+                    displayKey: "category",
+                  },
+                  {
+                    name: "type",
+                    displayKey: "type",
+                  },
+                ]}
+                actions={[
+                  {
+                    title: t("delete"),
+                    onRowClick: (mapper) => {
+                      setSelectedMapper(mapper);
+                      toggleDeleteMapperDialog();
+                    },
+                  } as Action<IdPWithMapperAttributes>,
+                ]}
+              />
             </Tab>
           )}
+          {!isClientAdminWithSsoPermission &&
+            isFeatureEnabled(Feature.AdminFineGrainedAuthz) && (
+              <Tab
+                id="permissions"
+                data-testid="permissionsTab"
+                title={<TabTitleText>{t("permissions")}</TabTitleText>}
+                {...permissionsTab}
+              >
+                <PermissionsTab id={alias} type="identityProviders" />
+              </Tab>
+            )}
           {realmRepresentation?.adminEventsEnabled &&
             hasAccess("view-events") && (
               <Tab

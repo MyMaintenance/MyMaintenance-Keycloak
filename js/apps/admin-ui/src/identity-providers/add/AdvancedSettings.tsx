@@ -4,7 +4,6 @@ import {
   FormErrorText,
   HelpItem,
   KeycloakSelect,
-  SelectControl,
   SelectVariant,
   useFetch,
 } from "@keycloak/keycloak-ui-shared";
@@ -24,6 +23,8 @@ import type { FieldProps } from "../component/FormGroupField";
 import { FormGroupField } from "../component/FormGroupField";
 import { SwitchField } from "../component/SwitchField";
 import { TextField } from "../component/TextField";
+import { useWhoAmI } from "../../context/whoami/WhoAmI";
+import { SelectControl } from "../../../../../libs/ui-shared/src/controls/select-control/SelectControl";
 
 const LoginFlow = ({
   field,
@@ -45,6 +46,16 @@ const LoginFlow = ({
       setFlows(flows.filter((flow) => flow.providerId === "basic-flow")),
     [],
   );
+
+  const { whoAmI, isLoading } = useWhoAmI();
+
+  if (isLoading || !whoAmI) {
+    return null;
+  }
+
+  // const isKeycloakAdmin = whoAmI.isKeycloakAdmin();
+  const isClientAdminWithSsoPermission =
+    whoAmI.isClientAdminWithSsoPermission();
 
   return (
     <FormGroup
@@ -68,6 +79,7 @@ const LoginFlow = ({
             variant={SelectVariant.single}
             aria-label={t(label)}
             isOpen={open}
+            isDisabled={isClientAdminWithSsoPermission}
           >
             {[
               ...(defaultValue === ""
@@ -119,17 +131,33 @@ export const AdvancedSettings = ({ isOIDC, isSAML }: AdvancedSettingsProps) => {
     defaultValue: "false",
   });
   const syncModeAvailable = transientUsers === "false";
+
+  const { whoAmI, isLoading } = useWhoAmI();
+
+  if (isLoading || !whoAmI) {
+    return null;
+  }
+
+  const isClientAdminWithSsoPermission =
+    whoAmI.isClientAdminWithSsoPermission();
+
   return (
     <>
       {!isOIDC && !isSAML && (
         <TextField field="config.defaultScope" label="scopes" />
       )}
-      <SwitchField field="storeToken" label="storeTokens" fieldType="boolean" />
+      <SwitchField
+        field="storeToken"
+        label="storeTokens"
+        fieldType="boolean"
+        isReadOnly={isClientAdminWithSsoPermission}
+      />
       {(isSAML || isOIDC) && (
         <SwitchField
           field="addReadTokenRoleOnCreate"
           label="storedTokensReadable"
           fieldType="boolean"
+          isReadOnly={isClientAdminWithSsoPermission}
         />
       )}
       {!isOIDC && !isSAML && (
@@ -142,18 +170,29 @@ export const AdvancedSettings = ({ isOIDC, isSAML }: AdvancedSettingsProps) => {
         </>
       )}
       {isOIDC && (
-        <SwitchField field="config.isAccessTokenJWT" label="isAccessTokenJWT" />
+        <SwitchField
+          field="config.isAccessTokenJWT"
+          label="isAccessTokenJWT"
+          isReadOnly={isClientAdminWithSsoPermission}
+        />
       )}
-      <SwitchField field="trustEmail" label="trustEmail" fieldType="boolean" />
+      <SwitchField
+        field="trustEmail"
+        label="trustEmail"
+        fieldType="boolean"
+        isReadOnly={isClientAdminWithSsoPermission}
+      />
       <SwitchField
         field="linkOnly"
         label="accountLinkingOnly"
         fieldType="boolean"
+        isReadOnly={isClientAdminWithSsoPermission}
       />
       <SwitchField
         field="hideOnLogin"
         label="hideOnLoginPage"
         fieldType="boolean"
+        isReadOnly={isClientAdminWithSsoPermission}
       />
 
       {(!isSAML || isOIDC) && (
@@ -171,6 +210,7 @@ export const AdvancedSettings = ({ isOIDC, isSAML }: AdvancedSettingsProps) => {
                 onChange={(_event, value) => {
                   field.onChange(value.toString());
                 }}
+                isDisabled={isClientAdminWithSsoPermission}
               />
             )}
           />
@@ -263,6 +303,7 @@ export const AdvancedSettings = ({ isOIDC, isSAML }: AdvancedSettingsProps) => {
                     setValue("config.syncMode", "IMPORT");
                   }
                 }}
+                isDisabled={isClientAdminWithSsoPermission}
               />
             )}
           />
@@ -281,11 +322,13 @@ export const AdvancedSettings = ({ isOIDC, isSAML }: AdvancedSettingsProps) => {
             defaultValue: SYNC_MODES[0],
             rules: { required: t("required") },
           }}
+          isDisabled={isClientAdminWithSsoPermission}
         />
       )}
       <SwitchField
         field="config.caseSensitiveOriginalUsername"
         label="caseSensitiveOriginalUsername"
+        isReadOnly={isClientAdminWithSsoPermission}
       />
     </>
   );

@@ -1,4 +1,4 @@
-import { SelectControl } from "@keycloak/keycloak-ui-shared";
+// import { SelectControl } from "@keycloak/keycloak-ui-shared";
 import { useFormContext, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { useServerInfo } from "../../context/server-info/ServerInfoProvider";
@@ -6,6 +6,8 @@ import { sortProviders } from "../../util";
 import { ClientIdSecret } from "../component/ClientIdSecret";
 import { SwitchField } from "../component/SwitchField";
 import { TextField } from "../component/TextField";
+import { useWhoAmI } from "../../context/whoami/WhoAmI";
+import { SelectControl } from "../../../../../libs/ui-shared/src/controls/select-control/SelectControl";
 
 const clientAuthentications = [
   "client_secret_post",
@@ -25,6 +27,15 @@ export const OIDCAuthentication = ({ create = true }: { create?: boolean }) => {
     name: "config.clientAuthMethod",
   });
 
+  const { whoAmI, isLoading } = useWhoAmI();
+
+  if (isLoading || !whoAmI) {
+    return null;
+  }
+
+  // const isKeycloakAdmin = whoAmI.isKeycloakAdmin();
+  const isClientAdminWithSsoPermission =
+    whoAmI.isClientAdminWithSsoPermission();
   return (
     <>
       <SelectControl
@@ -38,6 +49,7 @@ export const OIDCAuthentication = ({ create = true }: { create?: boolean }) => {
         controller={{
           defaultValue: clientAuthentications[0],
         }}
+        isDisabled={isClientAdminWithSsoPermission}
       />
       <ClientIdSecret
         secretRequired={clientAuthMethod !== "private_key_jwt"}
@@ -54,6 +66,7 @@ export const OIDCAuthentication = ({ create = true }: { create?: boolean }) => {
         controller={{
           defaultValue: "",
         }}
+        isDisabled={isClientAdminWithSsoPermission}
       />
       {(clientAuthMethod === "private_key_jwt" ||
         clientAuthMethod === "client_secret_jwt") && (

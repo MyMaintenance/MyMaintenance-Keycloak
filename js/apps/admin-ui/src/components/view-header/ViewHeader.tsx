@@ -26,6 +26,7 @@ import { useTranslation } from "react-i18next";
 import { FormattedLink } from "../external-link/FormattedLink";
 import { useHelp, HelpItem } from "@keycloak/keycloak-ui-shared";
 import "../../help-urls";
+import { useWhoAmI } from "../../context/whoami/WhoAmI";
 
 export type ViewHeaderProps = {
   titleKey: string;
@@ -84,6 +85,19 @@ export const ViewHeader = ({
   };
 
   const toKey = (value: string) => value.replace(/\s/g, "-");
+  const { whoAmI, isLoading } = useWhoAmI();
+
+  if (isLoading || !whoAmI) {
+    return null;
+  }
+
+  const isKeycloakAdmin = whoAmI.isKeycloakAdmin();
+  // const isClientAdminWithSsoPermission =
+  //   whoAmI.isClientAdminWithSsoPermission();
+
+  // if (!isKeycloakAdmin && !isClientAdminWithSsoPermission) {
+  //   return <h3 style={{ padding: "16px" }}>Access Denied</h3>;
+  // }
 
   return (
     <>
@@ -99,6 +113,18 @@ export const ViewHeader = ({
                     data-testid="view-header"
                   >
                     {i18n.exists(titleKey) ? t(titleKey) : titleKey}
+                    {!isKeycloakAdmin &&
+                      t(titleKey) !== "Identity providers" && (
+                        <FormattedLink
+                          title={"Guide - How to configure"}
+                          href={
+                            "https://docs.google.com/document/d/1_-mafw_Oj9fMnNGXvUnJF6EpxctmIXm5eN8MMXA96NM/edit?usp=sharing"
+                          }
+                          isInline
+                          style={{ fontSize: 16, paddingLeft: 20 }}
+                          className="pf-u-ml-md"
+                        />
+                      )}
                   </Text>
                 </TextContent>
               </LevelItem>
