@@ -194,19 +194,20 @@ export default function IdentityProvidersSection() {
   }
 
   const isKeycloakAdmin = whoAmI.isKeycloakAdmin();
-  // if (!isKeycloakAdmin && !isClientAdminWithSsoPermission) {
-  //   return <h3 style={{ padding: "16px" }}>Access Denied</h3>;
-  // }
+  const isClientAdminWithSsoPermission =
+    whoAmI.isClientAdminWithSsoPermission();
 
   return (
     <div>
-      <style>
-        {`
+      {isClientAdminWithSsoPermission && (
+        <style>
+          {`
         #kc-main-content-page-container .pf-v5-c-toolbar {
           display: none !important;
         }
       `}
-      </style>
+        </style>
+      )}
       <DeleteConfirm />
       {manageDisplayDialog && (
         <ManageOrderDialog
