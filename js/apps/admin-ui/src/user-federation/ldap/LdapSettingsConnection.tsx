@@ -28,6 +28,7 @@ import { useAlerts } from "@keycloak/keycloak-ui-shared";
 import { FormAccess } from "../../components/form/FormAccess";
 import { WizardSectionHeader } from "../../components/wizard-section-header/WizardSectionHeader";
 import { useRealm } from "../../context/realm-context/RealmContext";
+import { useWhoAmI } from "../../context/whoami/WhoAmI";
 
 export type LdapSettingsConnectionProps = {
   form: UseFormReturn;
@@ -93,6 +94,14 @@ export const LdapSettingsConnection = ({
     defaultValue: ["simple"],
   });
 
+  const { whoAmI, isLoading } = useWhoAmI();
+  if (isLoading || !whoAmI) {
+    return null;
+  }
+
+  const isClientAdminWithLdapPermission =
+    whoAmI.isClientAdminWithLdapPermission();
+
   return (
     <FormProvider {...form}>
       {showSectionHeading && (
@@ -131,7 +140,7 @@ export const LdapSettingsConnection = ({
               <Switch
                 id={"kc-enable-start-tls"}
                 data-testid="enable-start-tls"
-                isDisabled={false}
+                isDisabled={isClientAdminWithLdapPermission}
                 onChange={(_event, value) => field.onChange([`${value}`])}
                 isChecked={field.value[0] === "true"}
                 label={t("on")}
@@ -153,6 +162,7 @@ export const LdapSettingsConnection = ({
             { key: "always", value: t("always") },
             { key: "never", value: t("never") },
           ]}
+          isDisabled={isClientAdminWithLdapPermission}
         />
         <FormGroup
           label={t("connectionPooling")}
@@ -173,7 +183,7 @@ export const LdapSettingsConnection = ({
               <Switch
                 id={"kc-connection-pooling"}
                 data-testid="connection-pooling"
-                isDisabled={false}
+                isDisabled={isClientAdminWithLdapPermission}
                 onChange={(_event, value) => field.onChange([`${value}`])}
                 isChecked={field.value[0] === "true"}
                 label={t("on")}

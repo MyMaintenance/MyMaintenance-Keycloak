@@ -8,6 +8,7 @@ import { Controller, FormProvider, UseFormReturn } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { FormAccess } from "../../components/form/FormAccess";
 import { WizardSectionHeader } from "../../components/wizard-section-header/WizardSectionHeader";
+import { useWhoAmI } from "../../context/whoami/WhoAmI";
 
 export type LdapSettingsSearchingProps = {
   form: UseFormReturn;
@@ -21,6 +22,14 @@ export const LdapSettingsSearching = ({
   showSectionDescription = false,
 }: LdapSettingsSearchingProps) => {
   const { t } = useTranslation();
+
+  const { whoAmI, isLoading } = useWhoAmI();
+  if (isLoading || !whoAmI) {
+    return null;
+  }
+
+  const isClientAdminWithLdapPermission =
+    whoAmI.isClientAdminWithLdapPermission();
 
   return (
     <FormProvider {...form}>
@@ -45,6 +54,7 @@ export const LdapSettingsSearching = ({
             },
           }}
           options={["", "READ_ONLY", "WRITABLE", "UNSYNCED"]}
+          isDisabled={isClientAdminWithLdapPermission}
         />
         <TextControl
           name="config.usersDn.0"

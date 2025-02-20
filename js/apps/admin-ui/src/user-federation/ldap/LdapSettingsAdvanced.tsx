@@ -8,6 +8,7 @@ import { FormAccess } from "../../components/form/FormAccess";
 import { WizardSectionHeader } from "../../components/wizard-section-header/WizardSectionHeader";
 import { useRealm } from "../../context/realm-context/RealmContext";
 import { convertFormToSettings } from "./LdapSettingsConnection";
+import { useWhoAmI } from "../../context/whoami/WhoAmI";
 
 export type LdapSettingsAdvancedProps = {
   id?: string;
@@ -51,6 +52,14 @@ export const LdapSettingsAdvanced = ({
     }
   };
 
+  const { whoAmI, isLoading } = useWhoAmI();
+  if (isLoading || !whoAmI) {
+    return null;
+  }
+
+  const isClientAdminWithLdapPermission =
+    whoAmI.isClientAdminWithLdapPermission();
+
   return (
     <>
       {showSectionHeading && (
@@ -81,7 +90,7 @@ export const LdapSettingsAdvanced = ({
               <Switch
                 id={"kc-enable-ldapv3-password"}
                 data-testid="ldapv3-password"
-                isDisabled={false}
+                isDisabled={isClientAdminWithLdapPermission}
                 onChange={(_event, value) => field.onChange([`${value}`])}
                 isChecked={field.value[0] === "true"}
                 label={t("on")}
@@ -111,7 +120,7 @@ export const LdapSettingsAdvanced = ({
               <Switch
                 id={"kc-validate-password-policy"}
                 data-testid="password-policy"
-                isDisabled={false}
+                isDisabled={isClientAdminWithLdapPermission}
                 onChange={(_event, value) => field.onChange([`${value}`])}
                 isChecked={field.value[0] === "true"}
                 label={t("on")}
@@ -141,7 +150,7 @@ export const LdapSettingsAdvanced = ({
               <Switch
                 id={"kc-trust-email"}
                 data-testid="trust-email"
-                isDisabled={false}
+                isDisabled={isClientAdminWithLdapPermission}
                 onChange={(_event, value) => field.onChange([`${value}`])}
                 isChecked={field.value[0] === "true"}
                 label={t("on")}
@@ -170,7 +179,7 @@ export const LdapSettingsAdvanced = ({
               <Switch
                 id={"kc-connection-trace"}
                 data-testid="connection-trace"
-                isDisabled={false}
+                isDisabled={isClientAdminWithLdapPermission}
                 onChange={(_event, value) => field.onChange([`${value}`])}
                 isChecked={field.value[0] === "true"}
                 label={t("on")}
@@ -186,6 +195,7 @@ export const LdapSettingsAdvanced = ({
             id="query-extensions"
             data-testid="query-extensions"
             onClick={testLdap}
+            isDisabled={isClientAdminWithLdapPermission}
           >
             {t("queryExtensions")}
           </Button>

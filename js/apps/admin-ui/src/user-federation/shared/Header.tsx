@@ -14,6 +14,7 @@ import { ViewHeader } from "../../components/view-header/ViewHeader";
 import { useRealm } from "../../context/realm-context/RealmContext";
 import { CustomUserFederationRouteParams } from "../routes/CustomUserFederation";
 import { toUserFederation } from "../routes/UserFederation";
+import { useWhoAmI } from "../../context/whoami/WhoAmI";
 
 type HeaderProps = {
   provider: string;
@@ -64,6 +65,14 @@ export const Header = ({
       }
     },
   });
+  const { whoAmI, isLoading } = useWhoAmI();
+
+  if (isLoading || !whoAmI) {
+    return null;
+  }
+
+  const isClientAdminWithLdapPermission =
+    whoAmI.isClientAdminWithLdapPermission();
 
   return (
     <>
@@ -95,6 +104,12 @@ export const Header = ({
                   {t("deleteProvider")}
                 </DropdownItem>,
               ]}
+              {...(isClientAdminWithLdapPermission
+                ? {
+                    setupGuideUrl:
+                      "https://docs.google.com/document/d/1_-mafw_Oj9fMnNGXvUnJF6EpxctmIXm5eN8MMXA96NM/edit?usp=sharing",
+                  }
+                : {})}
               isEnabled={field.value?.[0] === "true" || field.value === "true"}
               onToggle={(value) => {
                 if (!value) {

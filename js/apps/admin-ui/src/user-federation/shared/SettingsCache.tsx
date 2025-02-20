@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import { FormAccess } from "../../components/form/FormAccess";
 import { WizardSectionHeader } from "../../components/wizard-section-header/WizardSectionHeader";
 import useToggle from "../../utils/useToggle";
+import { useWhoAmI } from "../../context/whoami/WhoAmI";
 
 export type SettingsCacheProps = {
   form: UseFormReturn;
@@ -69,6 +70,14 @@ const CacheFields = ({ form }: { form: UseFormReturn }) => {
     );
   }
 
+  const { whoAmI, isLoading } = useWhoAmI();
+  if (isLoading || !whoAmI) {
+    return null;
+  }
+
+  const isClientAdminWithLdapPermission =
+    whoAmI.isClientAdminWithLdapPermission();
+
   return (
     <>
       <FormGroup
@@ -90,6 +99,7 @@ const CacheFields = ({ form }: { form: UseFormReturn }) => {
               toggleId="kc-cache-policy"
               onToggle={toggleCachePolicy}
               isOpen={isCachePolicyOpen}
+              isDisabled={isClientAdminWithLdapPermission}
               onSelect={(value) => {
                 field.onChange(value as string);
                 toggleCachePolicy();

@@ -33,6 +33,7 @@ import { toCustomUserFederation } from "./routes/CustomUserFederation";
 import { toNewCustomUserFederation } from "./routes/NewCustomUserFederation";
 import { toUserFederationKerberos } from "./routes/UserFederationKerberos";
 import { toUserFederationLdap } from "./routes/UserFederationLdap";
+import { useWhoAmI } from "../context/whoami/WhoAmI";
 
 import "./user-federation.css";
 
@@ -46,6 +47,7 @@ export default function UserFederationSection() {
   const { realm, realmRepresentation } = useRealm();
   const [key, setKey] = useState(0);
   const refresh = () => setKey(new Date().getTime());
+  const { whoAmI, isLoading } = useWhoAmI();
 
   const navigate = useNavigate();
 
@@ -112,6 +114,12 @@ export default function UserFederationSection() {
     },
   });
 
+  if (isLoading || !whoAmI) {
+    return null;
+  }
+
+  const isKeycloakAdmin = whoAmI.isKeycloakAdmin();
+
   const toggleDeleteForCard = (id: string) => {
     setCurrentCard(id);
     toggleDeleteDialog();
@@ -142,17 +150,21 @@ export default function UserFederationSection() {
       >
         <KeycloakCard
           to={toDetails(userFederation.providerId!, userFederation.id!)}
-          dropdownItems={[
-            <DropdownItem
-              key={`${index}-cardDelete`}
-              onClick={() => {
-                toggleDeleteForCard(userFederation.id!);
-              }}
-              data-testid="card-delete"
-            >
-              {t("delete")}
-            </DropdownItem>,
-          ]}
+          {...(isKeycloakAdmin
+            ? {
+                dropdownItems: [
+                  <DropdownItem
+                    key={`${index}-cardDelete`}
+                    onClick={() => {
+                      toggleDeleteForCard(userFederation.id!);
+                    }}
+                    data-testid="card-delete"
+                  >
+                    {t("delete")}
+                  </DropdownItem>,
+                ],
+              }
+            : {})}
           title={userFederation.name!}
           footerText={toUpperCase(userFederation.providerId!)}
           labelText={
@@ -183,7 +195,7 @@ export default function UserFederationSection() {
         titleKey="userFederation"
         subKey="userFederationExplain"
         helpUrl={helpUrls.userFederationUrl}
-        {...(userFederations && userFederations.length > 0
+        {...(userFederations && userFederations.length > 0 && isKeycloakAdmin
           ? {
               lowerDropdownItems: ufAddProviderDropdownItems,
               lowerDropdownMenuTitle: "addNewProvider",

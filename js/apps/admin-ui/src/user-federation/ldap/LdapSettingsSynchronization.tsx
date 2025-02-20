@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { HelpItem, TextControl } from "@keycloak/keycloak-ui-shared";
 import { FormAccess } from "../../components/form/FormAccess";
 import { WizardSectionHeader } from "../../components/wizard-section-header/WizardSectionHeader";
+import { useWhoAmI } from "../../context/whoami/WhoAmI";
 
 export type LdapSettingsSynchronizationProps = {
   form: UseFormReturn;
@@ -20,6 +21,14 @@ export const LdapSettingsSynchronization = ({
 
   const watchPeriodicSync = form.watch("config.periodicFullSync", false);
   const watchChangedSync = form.watch("config.periodicChangedUsersSync", false);
+
+  const { whoAmI, isLoading } = useWhoAmI();
+  if (isLoading || !whoAmI) {
+    return null;
+  }
+
+  const isClientAdminWithLdapPermission =
+    whoAmI.isClientAdminWithLdapPermission();
 
   return (
     <FormProvider {...form}>
@@ -56,7 +65,7 @@ export const LdapSettingsSynchronization = ({
                 labelOff={t("off")}
                 onChange={(_event, value) => field.onChange([`${value}`])}
                 isChecked={field.value[0] === "true"}
-                isDisabled={false}
+                isDisabled={isClientAdminWithLdapPermission}
                 aria-label={t("importUsers")}
               />
             )}
@@ -86,6 +95,7 @@ export const LdapSettingsSynchronization = ({
                 onChange={(_event, value) => field.onChange([`${value}`])}
                 isChecked={field.value[0] === "true"}
                 aria-label={t("syncRegistrations")}
+                isDisabled={isClientAdminWithLdapPermission}
               />
             )}
           />
@@ -96,6 +106,7 @@ export const LdapSettingsSynchronization = ({
           min={0}
           label={t("batchSize")}
           labelIcon={t("batchSizeHelp")}
+          isDisabled={isClientAdminWithLdapPermission}
         />
         <FormGroup
           label={t("periodicFullSync")}

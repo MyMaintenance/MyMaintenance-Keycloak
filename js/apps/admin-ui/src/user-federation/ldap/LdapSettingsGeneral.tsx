@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { FormAccess } from "../../components/form/FormAccess";
 import { WizardSectionHeader } from "../../components/wizard-section-header/WizardSectionHeader";
 import { useRealm } from "../../context/realm-context/RealmContext";
+import { useWhoAmI } from "../../context/whoami/WhoAmI";
 
 export type LdapSettingsGeneralProps = {
   form: UseFormReturn<ComponentRepresentation>;
@@ -31,6 +32,7 @@ export const LdapSettingsGeneral = ({
 
   useEffect(() => form.setValue("parentId", realmRepresentation?.id), []);
   const [isVendorDropdownOpen, setIsVendorDropdownOpen] = useState(false);
+  const { whoAmI, isLoading } = useWhoAmI();
 
   const setVendorDefaultValues = () => {
     switch (form.getValues("config.vendor[0]")) {
@@ -89,6 +91,13 @@ export const LdapSettingsGeneral = ({
     }
   };
 
+  if (isLoading || !whoAmI) {
+    return null;
+  }
+
+  const isClientAdminWithLdapPermission =
+    whoAmI.isClientAdminWithLdapPermission();
+
   return (
     <FormProvider {...form}>
       {showSectionHeading && (
@@ -123,6 +132,7 @@ export const LdapSettingsGeneral = ({
           rules={{
             required: t("validateName"),
           }}
+          isDisabled={isClientAdminWithLdapPermission}
         />
         <FormGroup
           label={t("vendor")}
