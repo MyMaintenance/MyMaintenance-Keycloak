@@ -135,18 +135,56 @@ export const RealmSelector = () => {
     [open, first, search],
   );
 
-  const sortedRealms = useMemo(
-    () =>
-      realms.sort((a, b) => {
+  const sortedRealms = useMemo(() => {
+    // return realms.sort((a, b) => {
+    //   if (a.name === realm) return -1;
+    //   if (b.name === realm) return 1;
+    //   if (recentRealms.includes(a.name)) return -1;
+    //   if (recentRealms.includes(b.name)) return 1;
+
+    //   return a.name.localeCompare(b.name, whoAmI.getLocale());
+    // });
+
+    const ssoRealm =
+      realms.find((r) => r.name?.toLowerCase() === "mym_sso") ?? null;
+
+    const masterRealm =
+      realms.find((r) => r.name?.toLowerCase() === "master") ?? null;
+
+    const adminRealm =
+      realms.find((r) => r.name?.toLowerCase() === "mym_admin") ?? null;
+
+    const otherRealms = realms
+      .filter(
+        (r) =>
+          ssoRealm == null || (ssoRealm != null && r.name != ssoRealm.name),
+      )
+      .filter(
+        (r) =>
+          masterRealm == null ||
+          (masterRealm != null && r.name != masterRealm.name),
+      )
+      .filter(
+        (r) =>
+          adminRealm == null ||
+          (adminRealm != null && r.name != adminRealm.name),
+      )
+      .sort((a, b) => {
         if (a.name === realm) return -1;
         if (b.name === realm) return 1;
-        if (recentRealms.includes(a.name)) return -1;
-        if (recentRealms.includes(b.name)) return 1;
 
         return a.name.localeCompare(b.name, whoAmI.getLocale());
-      }),
-    [recentRealms, realms, first, search],
-  );
+      });
+
+    const all = [ssoRealm, ...otherRealms, masterRealm, adminRealm]
+      .filter((item) => item !== null && item !== undefined)
+      .map((item) => ({
+        name: item.name ?? "",
+        used: false,
+      }));
+
+    return all;
+  }, [realms, realm, whoAmI]);
 
   const realmDisplayName = useMemo(
     () => realms.find((r) => r.name === realm)?.displayName,
