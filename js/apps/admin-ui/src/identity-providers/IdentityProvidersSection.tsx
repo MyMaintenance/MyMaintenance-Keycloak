@@ -194,12 +194,9 @@ export default function IdentityProvidersSection() {
   }
 
   const isKeycloakAdmin = whoAmI.isKeycloakAdmin();
-  const isClientAdminWithSsoPermission =
-    whoAmI.isClientAdminWithSsoPermission();
-
-  if (!isKeycloakAdmin && !isClientAdminWithSsoPermission) {
-    return <h3 style={{ padding: "16px" }}>Access Denied</h3>;
-  }
+  // if (!isKeycloakAdmin && !isClientAdminWithSsoPermission) {
+  //   return <h3 style={{ padding: "16px" }}>Access Denied</h3>;
+  // }
 
   return (
     <div>
@@ -210,19 +207,15 @@ export default function IdentityProvidersSection() {
         }
       `}
       </style>
-      {isKeycloakAdmin && (
-        <>
-          <DeleteConfirm />
-          {manageDisplayDialog && (
-            <ManageOrderDialog
-              hideRealmBasedIdps={hide}
-              onClose={() => {
-                setManageDisplayDialog(false);
-                refresh();
-              }}
-            />
-          )}
-        </>
+      <DeleteConfirm />
+      {manageDisplayDialog && (
+        <ManageOrderDialog
+          hideRealmBasedIdps={hide}
+          onClose={() => {
+            setManageDisplayDialog(false);
+            refresh();
+          }}
+        />
       )}
       <ViewHeader
         titleKey="identityProviders"

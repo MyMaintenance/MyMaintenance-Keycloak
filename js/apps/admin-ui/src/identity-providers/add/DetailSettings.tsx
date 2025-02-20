@@ -170,8 +170,8 @@ const Header = ({ onChange, value, save, toggleDeleteDialog }: HeaderProps) => {
   }
 
   const isKeycloakAdmin = whoAmI.isKeycloakAdmin();
-  // const isClientAdminWithSsoPermission =
-  //   whoAmI.isClientAdminWithSsoPermission();
+  const isClientAdminWithSsoPermission =
+    whoAmI.isClientAdminWithSsoPermission();
 
   // if (!isKeycloakAdmin && !isClientAdminWithSsoPermission) {
   //   return <h3 style={{ padding: "16px" }}>Access Denied</h3>;
@@ -188,6 +188,12 @@ const Header = ({ onChange, value, save, toggleDeleteDialog }: HeaderProps) => {
               : provider.providerId!
             : "",
         )}
+        {...(isClientAdminWithSsoPermission
+          ? {
+              setupGuideUrl:
+                "https://docs.google.com/document/d/1C1FuhyE9YBuI-kWvWwSrFjVfTXNO8f-CYXu-BRW5hwk/edit?usp=sharing",
+            }
+          : {})}
         divider={false}
         {...(isKeycloakAdmin && {
           dropdownItems: [
