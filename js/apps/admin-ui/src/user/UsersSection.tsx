@@ -14,6 +14,7 @@ import {
 import useIsFeatureEnabled, { Feature } from "../utils/useIsFeatureEnabled";
 import "./user-section.css";
 import { useAccess } from "../context/access/Access";
+import { useWhoAmI } from "../context/whoami/WhoAmI";
 
 export default function UsersSection() {
   const { t } = useTranslation();
@@ -35,6 +36,13 @@ export default function UsersSection() {
 
   const listTab = useTab("list");
   const permissionsTab = useTab("permissions");
+  const { whoAmI, isLoading } = useWhoAmI();
+
+  if (isLoading || !whoAmI) {
+    return null;
+  }
+
+  const isKeycloakAdmin = whoAmI.isKeycloakAdmin();
 
   return (
     <>
@@ -66,7 +74,7 @@ export default function UsersSection() {
           >
             <UserDataTable />
           </Tab>
-          {canViewPermissions && (
+          {canViewPermissions && isKeycloakAdmin && (
             <Tab
               id="permissions"
               data-testid="permissionsTab"
