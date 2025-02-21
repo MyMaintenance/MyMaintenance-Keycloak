@@ -52,7 +52,9 @@ const EmptyDashboard = () => {
 
   const { t } = useTranslation();
   const { realm, realmRepresentation: realmInfo } = useRealm();
-  const brandImage = environment.logo ? environment.logo : "/icon.svg";
+  const brandImage = environment.dashboardLogo
+    ? environment.dashboardLogo
+    : "/icon.png";
   const realmDisplayInfo = label(t, realmInfo?.displayName, realm);
 
   return (
