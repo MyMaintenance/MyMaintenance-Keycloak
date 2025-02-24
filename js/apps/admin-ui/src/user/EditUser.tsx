@@ -239,8 +239,8 @@ export default function EditUser() {
     }
   };
 
-  // const [toggleDisableDialog, DisableConfirm] = useConfirmDialog({
-  const [DisableConfirm] = useConfirmDialog({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [toggleDisableDialog, DisableConfirm] = useConfirmDialog({
     titleKey: "disableConfirmUserTitle",
     messageKey: "disableConfirmUser",
     continueButtonLabel: "disable",
