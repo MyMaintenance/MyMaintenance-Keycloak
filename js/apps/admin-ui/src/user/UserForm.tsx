@@ -30,7 +30,7 @@ import { useAlerts } from "@keycloak/keycloak-ui-shared";
 import { FormAccess } from "../components/form/FormAccess";
 import { GroupPickerDialog } from "../components/group/GroupPickerDialog";
 import { useAccess } from "../context/access/Access";
-import { useWhoAmI } from "../context/whoami/WhoAmI";
+import { clientAdminUserName, useWhoAmI } from "../context/whoami/WhoAmI";
 import { emailRegexPattern } from "../util";
 import useFormatDate from "../utils/useFormatDate";
 import { FederatedUserLink } from "./FederatedUserLink";
@@ -78,7 +78,7 @@ export const UserForm = ({
   const { hasAccess } = useAccess();
   const isManager = hasAccess("manage-users");
   const canViewFederationLink = hasAccess("view-realm");
-  const { whoAmI } = useWhoAmI();
+  const { whoAmI, isLoading } = useWhoAmI();
   const currentLocale = whoAmI.getLocale();
 
   const { handleSubmit, setValue, control, reset, formState } = form;
@@ -151,6 +151,12 @@ export const UserForm = ({
       ?.map((a) => a.readOnly)
       .reduce((p, c) => p && c, true);
 
+  if (isLoading || !whoAmI) {
+    return null;
+  }
+
+  const isClientAdmin = whoAmI.isClientAdmin();
+
   return (
     <FormAccess
       isHorizontal
@@ -220,6 +226,7 @@ export const UserForm = ({
           name="requiredActions"
           label="requiredUserActions"
           help="requiredUserActionsHelp"
+          isDisabled={isClientAdmin && user?.username == clientAdminUserName}
         />
         {user?.federationLink && canViewFederationLink && (
           <FormGroup
@@ -240,6 +247,9 @@ export const UserForm = ({
               name="emailVerified"
               label={t("emailVerified")}
               labelIcon={t("emailVerifiedHelp")}
+              isDisabled={
+                isClientAdmin && user?.username == clientAdminUserName
+              }
             />
             <UserProfileFields
               form={form}

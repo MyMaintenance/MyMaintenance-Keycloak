@@ -59,6 +59,7 @@ import {
 import { UserParams, UserTab, toUser } from "./routes/User";
 import { toUsers } from "./routes/Users";
 import { isLightweightUser } from "./utils";
+import { clientAdminUserName, useWhoAmI } from "../context/whoami/WhoAmI";
 
 import "./user-section.css";
 import { AdminEvents } from "../events/AdminEvents";
@@ -118,6 +119,7 @@ export default function EditUser() {
   );
   const sessionsTab = useRoutableTab(toTab("sessions"));
   const eventsTab = useRoutableTab(toTab("events"));
+  const { whoAmI } = useWhoAmI();
 
   useFetch(
     async () =>
@@ -145,7 +147,18 @@ export default function EditUser() {
       }
 
       const { userProfileMetadata, ...user } = userData;
-      setUserProfileMetadata(userProfileMetadata);
+
+      if (userProfileMetadata?.attributes?.length ?? 0 > 0) {
+        const isClientAdmin = whoAmI.isClientAdmin();
+        const updatedMetadata = { ...userProfileMetadata };
+
+        if (isClientAdmin && user.username == clientAdminUserName) {
+          updatedMetadata.attributes?.map((e) => (e.readOnly = true));
+        }
+
+        setUserProfileMetadata(updatedMetadata);
+      }
+
       user.unmanagedAttributes = unmanagedAttributes;
       user.attributes = filterManagedAttributes(
         user.attributes,
@@ -226,7 +239,8 @@ export default function EditUser() {
     }
   };
 
-  const [toggleDisableDialog, DisableConfirm] = useConfirmDialog({
+  // const [toggleDisableDialog, DisableConfirm] = useConfirmDialog({
+  const [DisableConfirm] = useConfirmDialog({
     titleKey: "disableConfirmUserTitle",
     messageKey: "disableConfirmUser",
     continueButtonLabel: "disable",
@@ -245,6 +259,13 @@ export default function EditUser() {
     continueButtonVariant: ButtonVariant.danger,
     onConfirm: async () => {
       try {
+        const isClientAdmin = whoAmI.isClientAdmin();
+        if (isClientAdmin && user!.username == clientAdminUserName) {
+          // Prevent client admin to remove its own account
+          addAlert("Cannot delete your own account", AlertVariant.warning);
+          return;
+        }
+
         if (lightweightUser) {
           await adminClient.users.logout({ id: user!.id! });
         } else {
@@ -326,16 +347,6 @@ export default function EditUser() {
             {t("delete")}
           </DropdownItem>,
         ]}
-        onToggle={(value) => {
-          if (!value) {
-            toggleDisableDialog();
-          } else {
-            save({
-              ...toUserFormFields(user),
-              enabled: value,
-            });
-          }
-        }}
         isEnabled={user.enabled}
       />
 

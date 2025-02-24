@@ -365,12 +365,7 @@ export function UserDataTable() {
     return null;
   }
 
-  const isClientAdminWithSsoPermission =
-    whoAmI.isClientAdminWithSsoPermission();
-  const isClientAdminWithLdapPermission =
-    whoAmI.isClientAdminWithLdapPermission();
-  const isClientAdmin =
-    isClientAdminWithSsoPermission || isClientAdminWithLdapPermission;
+  const isClientAdmin = whoAmI.isClientAdmin();
 
   return (
     <>
