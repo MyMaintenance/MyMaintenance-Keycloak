@@ -44,7 +44,8 @@ export const LdapSettingsSearching = ({
       <FormAccess role="manage-realm" isHorizontal>
         <SelectControl
           id="editMode"
-          name="config.editMode[0]"
+          name="config.editMode"
+          // name="config.editMode[0]"
           label={t("editMode")}
           labelIcon={t("editModeLdapHelp")}
           controller={{

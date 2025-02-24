@@ -6,12 +6,15 @@ import { useAdminClient } from "../../admin-client";
 import { useAlerts } from "@keycloak/keycloak-ui-shared";
 import { useConfirmDialog } from "../../components/confirm-dialog/ConfirmDialog";
 import { Header } from "./Header";
+import { JSX } from "react/jsx-runtime";
+import { useWhoAmI } from "../../context/whoami/WhoAmI";
 
 type ExtendedHeaderProps = {
   provider: string;
   editMode?: string | string[];
   save: () => void;
   noDivider?: boolean;
+  isFormValid?: () => boolean;
 };
 
 export const ExtendedHeader = ({
@@ -19,12 +22,14 @@ export const ExtendedHeader = ({
   editMode,
   save,
   noDivider = false,
+  isFormValid = () => true,
 }: ExtendedHeaderProps) => {
   const { adminClient } = useAdminClient();
 
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const { addAlert, addError } = useAlerts();
+  const { whoAmI, isLoading } = useWhoAmI();
 
   const { control } = useFormContext();
   const hasImportUsers = useWatch({
@@ -120,6 +125,46 @@ export const ExtendedHeader = ({
     }
   };
 
+  if (isLoading || !whoAmI) {
+    return null;
+  }
+
+  const isClientAdmin = whoAmI.isClientAdmin();
+
+  let dropdownItems: JSX.Element[] | undefined = [];
+  if (isFormValid()) {
+    dropdownItems = [
+      <DropdownItem
+        key="sync"
+        onClick={syncChangedUsers}
+        isDisabled={hasImportUsers === "false"}
+      >
+        {t("syncChangedUsers")}
+      </DropdownItem>,
+      <DropdownItem
+        key="syncall"
+        onClick={syncAllUsers}
+        isDisabled={hasImportUsers === "false"}
+      >
+        {t("syncAllUsers")}
+      </DropdownItem>,
+      <DropdownItem
+        key="unlink"
+        isDisabled={editMode ? editMode.includes("UNSYNCED") : false}
+        onClick={toggleUnlinkUsersDialog}
+      >
+        {t("unlinkUsers")}
+      </DropdownItem>,
+      <DropdownItem key="remove" onClick={toggleRemoveUsersDialog}>
+        {t("removeImported")}
+      </DropdownItem>,
+    ];
+
+    if (!isClientAdmin) {
+      dropdownItems.concat([<Divider key="separator" />]);
+    }
+  }
+
   return (
     <>
       <UnlinkUsersDialog />
@@ -128,33 +173,8 @@ export const ExtendedHeader = ({
         provider={provider}
         noDivider={noDivider}
         save={save}
-        dropdownItems={[
-          <DropdownItem
-            key="sync"
-            onClick={syncChangedUsers}
-            isDisabled={hasImportUsers === "false"}
-          >
-            {t("syncChangedUsers")}
-          </DropdownItem>,
-          <DropdownItem
-            key="syncall"
-            onClick={syncAllUsers}
-            isDisabled={hasImportUsers === "false"}
-          >
-            {t("syncAllUsers")}
-          </DropdownItem>,
-          <DropdownItem
-            key="unlink"
-            isDisabled={editMode ? editMode.includes("UNSYNCED") : false}
-            onClick={toggleUnlinkUsersDialog}
-          >
-            {t("unlinkUsers")}
-          </DropdownItem>,
-          <DropdownItem key="remove" onClick={toggleRemoveUsersDialog}>
-            {t("removeImported")}
-          </DropdownItem>,
-          <Divider key="separator" />,
-        ]}
+        dropdownItems={[...dropdownItems]}
+        isFormValid={isFormValid}
       />
     </>
   );

@@ -21,6 +21,7 @@ type HeaderProps = {
   save: () => void;
   dropdownItems?: ReactElement[];
   noDivider?: boolean;
+  isFormValid?: () => boolean;
 };
 
 export const Header = ({
@@ -28,6 +29,7 @@ export const Header = ({
   save,
   noDivider = false,
   dropdownItems = [],
+  isFormValid = () => true,
 }: HeaderProps) => {
   const { adminClient } = useAdminClient();
 
@@ -71,8 +73,21 @@ export const Header = ({
     return null;
   }
 
-  const isClientAdminWithLdapPermission =
-    whoAmI.isClientAdminWithLdapPermission();
+  const isKeycloakAdmin = whoAmI.isKeycloakAdmin();
+  const isClientAdmin = whoAmI.isClientAdmin();
+
+  const dropdownItems2 = dropdownItems;
+  if (isKeycloakAdmin) {
+    dropdownItems2.push(
+      <DropdownItem
+        key="delete"
+        onClick={() => toggleDeleteDialog()}
+        data-testid="delete-cmd"
+      >
+        {t("deleteProvider")}
+      </DropdownItem>,
+    );
+  }
 
   return (
     <>
@@ -82,8 +97,16 @@ export const Header = ({
         name="config.enabled"
         defaultValue={["true"]}
         control={control}
-        render={({ field }) =>
-          !id ? (
+        render={({ field }) => {
+          const toggleEnabled = isFormValid();
+
+          const dropDownEnabled =
+            isKeycloakAdmin ||
+            (isClientAdmin &&
+              dropdownItems2.length > 0 &&
+              (field.value?.[0] === "true" || field.value === "true"));
+
+          return !id ? (
             <ViewHeader
               titleKey={t("addProvider", {
                 provider: provider,
@@ -94,23 +117,19 @@ export const Header = ({
             <ViewHeader
               divider={!noDivider}
               titleKey={provider}
-              dropdownItems={[
-                ...dropdownItems,
-                <DropdownItem
-                  key="delete"
-                  onClick={() => toggleDeleteDialog()}
-                  data-testid="delete-cmd"
-                >
-                  {t("deleteProvider")}
-                </DropdownItem>,
-              ]}
-              {...(isClientAdminWithLdapPermission
+              isDropdownDisabled={!dropDownEnabled}
+              dropdownItems={dropdownItems2}
+              {...(isClientAdmin
                 ? {
                     setupGuideUrl:
                       "https://docs.google.com/document/d/1_-mafw_Oj9fMnNGXvUnJF6EpxctmIXm5eN8MMXA96NM/edit?usp=sharing",
                   }
                 : {})}
-              isEnabled={field.value?.[0] === "true" || field.value === "true"}
+              isReadOnly={!toggleEnabled}
+              isEnabled={
+                toggleEnabled &&
+                (field.value?.[0] === "true" || field.value === "true")
+              }
               onToggle={(value) => {
                 if (!value) {
                   toggleDisableDialog();
@@ -120,8 +139,8 @@ export const Header = ({
                 }
               }}
             />
-          )
-        }
+          );
+        }}
       />
     </>
   );

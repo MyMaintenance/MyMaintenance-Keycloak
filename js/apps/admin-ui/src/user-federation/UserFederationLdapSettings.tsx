@@ -78,6 +78,16 @@ export default function UserFederationLdapSettings() {
     );
   };
 
+  const isFormValid = () => {
+    const isCreateMode = component === null;
+
+    if (isCreateMode) {
+      return true;
+    }
+
+    return form.formState.isValid;
+  };
+
   const onSubmit = async (formData: LdapComponentRepresentation) => {
     try {
       await adminClient.components.update(
@@ -109,6 +119,7 @@ export default function UserFederationLdapSettings() {
         noDivider
         editMode={component.config?.editMode}
         save={() => form.handleSubmit(onSubmit)()}
+        isFormValid={isFormValid}
       />
       <PageSection variant="light" className="pf-v5-u-p-0">
         <RoutableTabs
