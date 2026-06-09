@@ -45,6 +45,12 @@ export type ViewHeaderProps = {
   helpTextKey?: string;
   isReadOnly?: boolean;
   setupGuideUrl?: string;
+  /**
+   * Optional content rendered as a Toolbar item immediately before the
+   * Enabled/Disabled switch. Used (e.g. on the IdP details page) to surface
+   * page-level actions like "Download Certificate" alongside the toggle.
+   */
+  preToggleButton?: ReactNode;
 };
 
 export type ViewHeaderBadge = {
@@ -71,6 +77,7 @@ export const ViewHeader = ({
   helpTextKey,
   isReadOnly = false,
   setupGuideUrl,
+  preToggleButton,
 }: ViewHeaderProps) => {
   const { t, i18n } = useTranslation();
   const { enabled } = useHelp();
@@ -134,6 +141,9 @@ export const ViewHeader = ({
           <LevelItem>
             <Toolbar className="pf-v5-u-p-0">
               <ToolbarContent>
+                {preToggleButton && (
+                  <ToolbarItem>{preToggleButton}</ToolbarItem>
+                )}
                 {onToggle && (
                   <ToolbarItem>
                     <Switch

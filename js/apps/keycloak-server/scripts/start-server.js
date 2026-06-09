@@ -51,13 +51,14 @@ async function startServer() {
   }
 
   if (scriptArgs["admin-dev"]) {
-    env.KC_ADMIN_VITE_URL = "http://localhost:5174";
+    env.KC_ADMIN_VITE_URL = "http://localhost:5175";
   }
 
   console.info("Starting server…");
 
+  const execPath = path.join(SERVER_DIR, `bin/kc${SCRIPT_EXTENSION}`);
   const child = spawn(
-    path.join(SERVER_DIR, `bin/kc${SCRIPT_EXTENSION}`),
+    `"${execPath}"`,
     [
       "start-dev",
       `--features="login:v2,account:v3,admin-fine-grained-authz,transient-users,oid4vc-vci,organization"`,

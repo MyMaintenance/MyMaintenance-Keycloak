@@ -27,6 +27,11 @@ export const OIDCAuthentication = ({ create = true }: { create?: boolean }) => {
     name: "config.clientAuthMethod",
   });
 
+  const alias = useWatch({
+    control: control,
+    name: "alias",
+  });
+
   const { whoAmI, isLoading } = useWhoAmI();
 
   if (isLoading || !whoAmI) {
@@ -36,6 +41,17 @@ export const OIDCAuthentication = ({ create = true }: { create?: boolean }) => {
   // const isKeycloakAdmin = whoAmI.isKeycloakAdmin();
   const isClientAdminWithSsoPermission =
     whoAmI.isClientAdminWithSsoPermission();
+
+  // Lock the JWT-assertion fields for the Client Admin on the
+  // microsoft_entra_id IdP when certificate mode is active.  MyMaintenance's
+  // update_entra_id_client_auth.py owns these values (clientAssertionSigningAlg,
+  // clientAssertionAudience, jwtX509HeadersEnabled) and a manual edit here
+  // would silently break the JWT client assertion flow with Microsoft Entra ID.
+  const isEntraIdCertModeForClientAdmin =
+    alias === "microsoft_entra_id" &&
+    clientAuthMethod === "private_key_jwt" &&
+    whoAmI.isClientAdmin();
+
   return (
     <>
       <SelectControl
@@ -66,19 +82,23 @@ export const OIDCAuthentication = ({ create = true }: { create?: boolean }) => {
         controller={{
           defaultValue: "",
         }}
-        isDisabled={isClientAdminWithSsoPermission}
+        isDisabled={
+          isClientAdminWithSsoPermission || isEntraIdCertModeForClientAdmin
+        }
       />
       {(clientAuthMethod === "private_key_jwt" ||
         clientAuthMethod === "client_secret_jwt") && (
         <TextField
           field="config.clientAssertionAudience"
           label="clientAssertionAudience"
+          isReadOnly={isEntraIdCertModeForClientAdmin}
         />
       )}
       {clientAuthMethod === "private_key_jwt" && (
         <SwitchField
           field="config.jwtX509HeadersEnabled"
           label="jwtX509HeadersEnabled"
+          isReadOnly={isEntraIdCertModeForClientAdmin}
         />
       )}
     </>

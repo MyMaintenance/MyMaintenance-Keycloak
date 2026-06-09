@@ -1,77 +1,285 @@
-![Keycloak](https://github.com/keycloak/keycloak-misc/blob/main/logo/logo.svg)
+# MyMaintenance System
 
-![GitHub Release](https://img.shields.io/github/v/release/keycloak/keycloak?label=latest%20release)
-[![OpenSSF Best Practices](https://bestpractices.coreinfrastructure.org/projects/6818/badge)](https://bestpractices.coreinfrastructure.org/projects/6818)
-[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/keycloak-operator)](https://artifacthub.io/packages/olm/community-operators/keycloak-operator)
-![GitHub Repo stars](https://img.shields.io/github/stars/keycloak/keycloak?style=flat)
-![GitHub commit activity](https://img.shields.io/github/commit-activity/m/keycloak/keycloak)
-[![Translation status](https://hosted.weblate.org/widget/keycloak/svg-badge.svg)](https://hosted.weblate.org/engage/keycloak/)
+A comprehensive maintenance management system built with Flutter, .NET, and PostgreSQL, featuring multi-tenant architecture with Keycloak authentication.
 
-# Open Source Identity and Access Management
+## 🏗️ System Architecture
 
-Add authentication to applications and secure services with minimum effort. No need to deal with storing users or authenticating users.
+The MyMaintenance system consists of multiple interconnected components:
 
-Keycloak provides user federation, strong authentication, user management, fine-grained authorization, and more.
+- **Frontend Applications**: Flutter-based mobile and web applications
+- **Backend Services**: .NET microservices with PostgreSQL databases
+- **Authentication**: Keycloak-based SSO and multi-tenant support
+- **Database Management**: Automated migration and schema management
+- **Infrastructure**: Docker-based deployment with nginx
 
+## 📱 Frontend Applications
 
-## Help and Documentation
+### MyMaintenance-Flutter/
+**Main Flutter Application**
+- Cross-platform mobile and web application for end-users
+- Maintenance request submission and tracking
+- Multi-tenant support with realm-based routing
+- PWA capabilities for offline functionality
+- Built with Flutter 3.x with advanced caching strategies
 
-* [Documentation](https://www.keycloak.org/documentation.html)
-* [User Mailing List](https://groups.google.com/d/forum/keycloak-user) - Mailing list for help and general questions about Keycloak
+**Key Features:**
+- Request form management
+- Real-time notifications
+- File attachments and image capture
+- QR code scanning
+- Multi-language support
 
+### MyMaintenance-Flutter-Admin/
+**Administrative Flutter Application**
+- Admin panel for system management
+- User and tenant management
+- Analytics and reporting dashboards
+- QR code generation for assets
+- Web-focused design with responsive layout
 
-## Reporting Security Vulnerabilities
+### flutter_web_file_selector/
+**Custom Flutter Package**
+- Enhanced file selection capabilities for web platforms
+- Supports multiple file types and validation
+- Custom UI components for file management
 
-If you have found a security vulnerability, please look at the [instructions on how to properly report it](https://github.com/keycloak/keycloak/security/policy).
+## 🔧 Backend Services
 
+### MyMaintenance-SecurityGateway/
+**API Gateway & Security Layer**
+- .NET Core API gateway
+- Authentication and authorization proxy
+- Rate limiting and request validation
+- Multi-tenant routing and data isolation
+- Integration with Keycloak for SSO
 
-## Reporting an issue
+**Technologies:**
+- ASP.NET Core
+- Entity Framework
+- JWT token validation
+- PostgreSQL integration
 
-If you believe you have discovered a defect in Keycloak, please open [an issue](https://github.com/keycloak/keycloak/issues).
-Please remember to provide a good summary, description as well as steps to reproduce the issue.
+### MyMaintenance-CreateRealm-Process/
+**Tenant Provisioning Service**
+- Automated realm/tenant creation
+- Database schema provisioning
+- Keycloak realm configuration
+- Batch processing for tenant onboarding
 
+**Features:**
+- Command-line interface
+- Configuration-driven provisioning
+- Database migration integration
+- Error handling and rollback capabilities
 
-## Getting started
+### MyMaintenance-WorksOrderReport-Process/
+**Reporting & Analytics Service**
+- Work order report generation
+- Data aggregation and analytics
+- Scheduled report processing
+- Export capabilities (PDF, Excel)
 
-To run Keycloak, download the distribution from our [website](https://www.keycloak.org/downloads.html). Unzip and run:
+## 🔐 Authentication & Identity
 
-    bin/kc.[sh|bat] start-dev
+### MyMaintenance-Keycloak/
+**Custom Keycloak Distribution**
+- Multi-tenant authentication server
+- Custom themes and branding
+- Enhanced user session management
+- Integration with external identity providers
 
-Alternatively, you can use the Docker image by running:
+### KeycloakCustomSPIs/
+**Custom Service Provider Interfaces**
+- Custom user session providers
+- Enhanced authentication flows
+- Java-based extensions for Keycloak
+- Specialized session management for multi-tenant scenarios
 
-    docker run quay.io/keycloak/keycloak start-dev
-    
-For more details refer to the [Keycloak Documentation](https://www.keycloak.org/documentation.html).
+## 🗄️ Database Management
 
+### DbMigration/
+**Core Database Migrations**
+- PostgreSQL schema management
+- Entity framework migrations
+- Core system tables and functions
+- Version-controlled database changes
 
-## Building from Source
+### DbMigration_WorksOrders/
+**Works Orders Database Module**
+- Work order specific schema
+- Audit tables and triggers
+- Specialized functions for work order management
 
-To build from source, refer to the [building and working with the code base](docs/building.md) guide.
+### DbMigration_Request_Additional_Info/
+**Request Information Module**
+- Additional request data management
+- Extended field support
+- Custom form field definitions
 
+**Migration Features:**
+- Automated deployment scripts
+- Rollback capabilities
+- Environment-specific configurations
+- Data seeding and initialization
 
-### Testing
+## 🌐 Web & Infrastructure
 
-To run tests, refer to the [running tests](docs/tests.md) guide.
+### DeepLinkFallbackPage/
+**Deep Link Handling**
+- Fallback pages for mobile deep links
+- App store redirection
+- Email verification pages
+- Dynamic URL generation for app downloads
 
+### Docker/
+**Containerization & Deployment**
+- Multi-service Docker Compose configurations
+- Environment-specific deployments
+- Database initialization scripts
+- Keycloak setup and configuration
+- Admin application deployment
+- Development and production configurations
 
-### Writing Tests
+**Available Configurations:**
+- `docker-compose.admin_app.yml` - Admin application
+- `docker-compose.create_realm_process_*.yml` - Tenant provisioning
+- Various environment-specific setups
 
-To write tests, refer to the [writing tests](docs/tests-development.md) guide.
+## 🚀 Getting Started
 
+### Prerequisites
+- Flutter SDK (version specified in `.fvm/fvm_config.json`)
+- .NET 6.0 or later
+- PostgreSQL 12+
+- Docker & Docker Compose
+- Keycloak 15+
 
-## Contributing
+### Development Setup
 
-Before contributing to Keycloak, please read our [contributing guidelines](CONTRIBUTING.md). Participation in the Keycloak project is governed by the [CNCF Code of Conduct](https://github.com/cncf/foundation/blob/main/code-of-conduct.md).
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd MyMaintenance
+   ```
 
-Joining a [community meeting](https://www.keycloak.org/community) is a great way to get involved and help shape the future of Keycloak.
+2. **Setup Flutter Environment**
+   ```bash
+   cd MyMaintenance-Flutter
+   fvm use  # Uses version from fvm_config.json
+   flutter pub get
+   ```
 
-## Other Keycloak Projects
+3. **Start Infrastructure Services**
+   ```bash
+   cd Docker/MyMaintenance-Flutter
+   docker-compose up -d keycloak postgres
+   ```
 
-* [Keycloak](https://github.com/keycloak/keycloak) - Keycloak Server and Java adapters
-* [Keycloak QuickStarts](https://github.com/keycloak/keycloak-quickstarts) - QuickStarts for getting started with Keycloak
-* [Keycloak Node.js Connect](https://github.com/keycloak/keycloak-nodejs-connect) - Node.js adapter for Keycloak
+4. **Run Database Migrations**
+   ```bash
+   cd DbMigration
+   # Configure connection strings
+   dotnet run
+   ```
 
+5. **Start Backend Services**
+   ```bash
+   cd MyMaintenance-SecurityGateway
+   dotnet run
+   ```
 
-## License
+6. **Launch Flutter Applications**
+   ```bash
+   # Main app
+   cd MyMaintenance-Flutter
+   flutter run -d web
 
-* [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+   # Admin app
+   cd MyMaintenance-Flutter-Admin
+   flutter run -d web
+   ```
+
+## 🏗️ Deployment
+
+### Production Deployment
+
+1. **Build Docker Images**
+   ```bash
+   # Build Flutter app
+   cd MyMaintenance-Flutter
+   docker build -t mymaintenance-app .
+
+   # Build admin app
+   cd MyMaintenance-Flutter-Admin
+   docker build -t mymaintenance-admin .
+   ```
+
+2. **Deploy with Docker Compose**
+   ```bash
+   cd Docker/MyMaintenance-Flutter
+   docker-compose -f docker-compose.production.yml up -d
+   ```
+
+### Environment Configuration
+
+Each service supports environment-specific configuration:
+
+- **Development**: Local development with hot reload
+- **Staging**: Pre-production testing environment
+- **Production**: High-availability production deployment
+
+Configuration is managed through:
+- Environment variables
+- Docker Compose overrides
+- Kubernetes manifests (if applicable)
+
+## 🧪 Testing
+
+### Frontend Testing
+```bash
+cd MyMaintenance-Flutter
+flutter test
+```
+
+### Backend Testing
+```bash
+cd MyMaintenance-SecurityGateway
+dotnet test
+```
+
+### Integration Testing
+- Database migration tests
+- API endpoint validation
+- End-to-end workflow testing
+
+## 📊 Monitoring & Observability
+
+- Application logging with structured logs
+- Performance monitoring
+- Database query optimization
+- Error tracking and alerting
+- Health check endpoints
+
+## 🤝 Contributing
+
+1. Follow the established project structure
+2. Ensure all tests pass before submitting PRs
+3. Update documentation for new features
+4. Follow coding standards for each technology stack
+
+## 📞 Support
+
+For technical support and documentation:
+- Check individual project README files
+- Review API documentation
+- Contact the development team
+
+## 📄 License
+
+[Specify your license here]
+
+---
+
+**Last Updated:** $(date)
+**Version:** Check individual project versions
+**Maintained by:** MyMaintenance Development Team

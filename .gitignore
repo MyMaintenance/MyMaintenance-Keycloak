@@ -29,7 +29,8 @@ nbproject
 # VS Code #
 ###########
 *.code-workspace
-*.vscode
+# Keep .vscode config files but exclude Chrome debug profiles
+.vscode/chrome-debug-profile*
 
 # Compiled source #
 ###################

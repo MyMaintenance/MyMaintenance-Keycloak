@@ -54,7 +54,7 @@ export const SingleSelectControl = <
         {...controller}
         name={name}
         control={control}
-        disabled
+        disabled={isDisabled}
         render={({ field: { onChange, value } }) => (
           <Select
             {...rest}
