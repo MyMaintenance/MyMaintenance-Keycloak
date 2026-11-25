@@ -7,6 +7,7 @@ import { UseFormReturn, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { FormAccess } from "../../components/form/FormAccess";
 import { WizardSectionHeader } from "../../components/wizard-section-header/WizardSectionHeader";
+import { useWhoAmI } from "../../context/whoami/WhoAmI";
 
 export type SettingsCacheProps = {
   form: UseFormReturn;
@@ -54,6 +55,16 @@ const CacheFields = ({ form }: { form: UseFormReturn }) => {
     minuteOptions.push({ key: `${index}`, value: minuteDisplay });
   }
 
+  const { userAccess, isLoading } = useWhoAmI();
+  if (isLoading) {
+    return null;
+  }
+
+  // MyMaintenance customisation: a client admin with LDAP cannot change the
+  // cache policy.
+  const isClientAdminWithLdapPermission =
+    userAccess.isClientAdminWithLdapPermission();
+
   return (
     <>
       <SelectControl
@@ -72,6 +83,7 @@ const CacheFields = ({ form }: { form: UseFormReturn }) => {
           "MAX_LIFESPAN",
           "NO_CACHE",
         ]}
+        isDisabled={isClientAdminWithLdapPermission}
       />
       {cachePolicy === "EVICT_WEEKLY" ? (
         <SelectControl

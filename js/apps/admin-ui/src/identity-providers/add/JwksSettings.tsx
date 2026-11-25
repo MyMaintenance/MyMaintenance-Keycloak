@@ -17,9 +17,14 @@ import { useAdminClient } from "../../admin-client";
 
 type JwksSettingsProps = {
   readOnly?: boolean;
+  /** MyMaintenance customisation: disable only the "Use JWKS URL" switch. */
+  isUseJwksUrlDisabled?: boolean;
 };
 
-export const JwksSettings = ({ readOnly = false }: JwksSettingsProps) => {
+export const JwksSettings = ({
+  readOnly = false,
+  isUseJwksUrlDisabled = false,
+}: JwksSettingsProps) => {
   const { t } = useTranslation();
   const { control, setValue } =
     useFormContext<IdentityProviderRepresentation>();
@@ -77,7 +82,7 @@ export const JwksSettings = ({ readOnly = false }: JwksSettingsProps) => {
         name="config.useJwksUrl"
         label={t("useJwksUrl")}
         labelIcon={t("useJwksUrlHelp")}
-        isDisabled={readOnly}
+        isDisabled={readOnly || isUseJwksUrlDisabled}
         defaultValue={"true"}
         stringify
       />

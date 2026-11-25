@@ -8,6 +8,7 @@ import { Controller, FormProvider, UseFormReturn } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { FormAccess } from "../../components/form/FormAccess";
 import { WizardSectionHeader } from "../../components/wizard-section-header/WizardSectionHeader";
+import { useWhoAmI } from "../../context/whoami/WhoAmI";
 
 export type LdapSettingsSearchingProps = {
   form: UseFormReturn;
@@ -22,6 +23,14 @@ export const LdapSettingsSearching = ({
 }: LdapSettingsSearchingProps) => {
   const { t } = useTranslation();
 
+  const { userAccess, isLoading } = useWhoAmI();
+  if (isLoading) {
+    return null;
+  }
+
+  const isClientAdminWithLdapPermission =
+    userAccess.isClientAdminWithLdapPermission();
+
   return (
     <FormProvider {...form}>
       {showSectionHeading && (
@@ -35,7 +44,8 @@ export const LdapSettingsSearching = ({
       <FormAccess role="manage-realm" isHorizontal>
         <SelectControl
           id="editMode"
-          name="config.editMode[0]"
+          name="config.editMode"
+          // name="config.editMode[0]"
           label={t("editMode")}
           labelIcon={t("editModeLdapHelp")}
           controller={{
@@ -48,6 +58,7 @@ export const LdapSettingsSearching = ({
             },
           }}
           options={["", "READ_ONLY", "WRITABLE", "UNSYNCED"]}
+          isDisabled={isClientAdminWithLdapPermission}
         />
         <TextControl
           name="config.usersDn.0"

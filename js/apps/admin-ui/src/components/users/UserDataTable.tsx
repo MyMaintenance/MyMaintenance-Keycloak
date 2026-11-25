@@ -44,6 +44,7 @@ import { useConfirmDialog } from "../confirm-dialog/ConfirmDialog";
 import { BruteUser, findUsers } from "../role-mapping/resource";
 import { UserDataTableToolbarItems } from "./UserDataTableToolbarItems";
 import { NetworkError } from "@keycloak/keycloak-admin-client";
+import { clientAdminUserName, useWhoAmI } from "../../context/whoami/WhoAmI";
 
 export type UserFilter = {
   exact: boolean;
@@ -134,6 +135,8 @@ export function UserDataTable() {
 
   const [key, setKey] = useState(0);
   const refresh = () => setKey(key + 1);
+  const { userAccess, isLoading } = useWhoAmI();
+  const isClientAdmin = userAccess.isClientAdmin();
 
   useFetch(
     async () => {
@@ -216,12 +219,24 @@ export function UserDataTable() {
     continueButtonVariant: ButtonVariant.danger,
     onConfirm: async () => {
       try {
+        let hasUserDeleted = false;
+
         for (const user of selectedRows) {
+          if (isClientAdmin && user.username == clientAdminUserName) {
+            // Prevent client admin to remove its own account
+            addAlert("Cannot delete your own account.", AlertVariant.warning);
+            continue;
+          }
+
           await adminClient.users.del({ id: user.id! });
+          hasUserDeleted = true;
         }
         setSelectedRows([]);
         clearAllFilters();
-        addAlert(t("userDeletedSuccess"), AlertVariant.success);
+
+        if (hasUserDeleted) {
+          addAlert(t("userDeletedSuccess"), AlertVariant.success);
+        }
       } catch (error) {
         addError("userDeletedError", error);
       }
@@ -345,6 +360,10 @@ export function UserDataTable() {
     );
   };
 
+  if (isLoading) {
+    return null;
+  }
+
   return (
     <>
       <DeleteConfirm />
@@ -386,7 +405,18 @@ export function UserDataTable() {
           {
             title: t("delete"),
             onClick: () => {
-              setSelectedRows([rowData.data]);
+              const user: UserRepresentation = rowData.data;
+              // MyMaintenance customisation: a client admin cannot delete
+              // their own account.
+              if (isClientAdmin && user.username == clientAdminUserName) {
+                addAlert(
+                  "Cannot delete your own account",
+                  AlertVariant.warning,
+                );
+                return;
+              }
+
+              setSelectedRows([user]);
               toggleDeleteDialog();
             },
           },

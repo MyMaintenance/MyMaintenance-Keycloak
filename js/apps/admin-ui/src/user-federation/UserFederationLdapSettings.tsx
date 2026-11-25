@@ -32,6 +32,7 @@ import {
 } from "./routes/UserFederationLdap";
 import { toUserFederationLdapMapper } from "./routes/UserFederationLdapMapper";
 import { ExtendedHeader } from "./shared/ExtendedHeader";
+import { useWhoAmI } from "../context/whoami/WhoAmI";
 
 export default function UserFederationLdapSettings() {
   const { adminClient } = useAdminClient();
@@ -45,6 +46,7 @@ export default function UserFederationLdapSettings() {
   const [refreshCount, setRefreshCount] = useState(0);
 
   const refresh = () => setRefreshCount((count) => count + 1);
+  const { userAccess, isLoading } = useWhoAmI();
 
   useFetch(
     () => adminClient.components.findOne({ id: id! }),
@@ -80,6 +82,16 @@ export default function UserFederationLdapSettings() {
     );
   };
 
+  const isFormValid = () => {
+    const isCreateMode = !component;
+
+    if (isCreateMode) {
+      return true;
+    }
+
+    return form.formState.isValid;
+  };
+
   const onSubmit = async (formData: LdapComponentRepresentation) => {
     try {
       await adminClient.components.update(
@@ -97,6 +109,13 @@ export default function UserFederationLdapSettings() {
     return <KeycloakSpinner />;
   }
 
+  if (isLoading) {
+    return null;
+  }
+
+  const isClientAdminWithSsoPermission =
+    userAccess.isClientAdminWithSsoPermission();
+
   return (
     <FormProvider {...form}>
       <ExtendedHeader
@@ -104,6 +123,7 @@ export default function UserFederationLdapSettings() {
         noDivider
         editMode={component.config?.editMode}
         save={() => form.handleSubmit(onSubmit)()}
+        isFormValid={isFormValid}
       />
       <PageSection variant="light" className="pf-v5-u-p-0">
         <RoutableTabs
@@ -123,27 +143,29 @@ export default function UserFederationLdapSettings() {
               <UserFederationLdapForm id={id} onSubmit={onSubmit} />
             </PageSection>
           </Tab>
-          <Tab
-            id="mappers"
-            title={<TabTitleText>{t("mappers")}</TabTitleText>}
-            data-testid="ldap-mappers-tab"
-            {...mappersTab}
-          >
-            <LdapMapperList
-              toCreate={toUserFederationLdapMapper({
-                realm,
-                id: id!,
-                mapperId: "new",
-              })}
-              toDetail={(mapperId) =>
-                toUserFederationLdapMapper({
+          {!isClientAdminWithSsoPermission && (
+            <Tab
+              id="mappers"
+              title={<TabTitleText>{t("mappers")}</TabTitleText>}
+              data-testid="ldap-mappers-tab"
+              {...mappersTab}
+            >
+              <LdapMapperList
+                toCreate={toUserFederationLdapMapper({
                   realm,
                   id: id!,
-                  mapperId,
-                })
-              }
-            />
-          </Tab>
+                  mapperId: "new",
+                })}
+                toDetail={(mapperId) =>
+                  toUserFederationLdapMapper({
+                    realm,
+                    id: id!,
+                    mapperId,
+                  })
+                }
+              />
+            </Tab>
+          )}
         </RoutableTabs>
       </PageSection>
     </FormProvider>

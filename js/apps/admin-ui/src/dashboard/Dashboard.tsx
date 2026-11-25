@@ -54,7 +54,10 @@ const EmptyDashboard = () => {
 
   const { t } = useTranslation();
   const { realm, realmRepresentation: realmInfo } = useRealm();
-  const brandImage = environment.logo ? environment.logo : "/icon.svg";
+  // MyMaintenance customisation: the MyMaintenance icon on the dashboard.
+  const brandImage = environment.dashboardLogo
+    ? environment.dashboardLogo
+    : "/icon.png";
   const realmDisplayInfo = resolveDisplayName(t, realmInfo.displayName, realm);
 
   return (

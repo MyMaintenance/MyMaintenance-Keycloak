@@ -44,6 +44,7 @@ import { upperCaseFormatter } from "../util";
 import { ManageOrderDialog } from "./ManageOrderDialog";
 import { toIdentityProvider } from "./routes/IdentityProvider";
 import { toIdentityProviderCreate } from "./routes/IdentityProviderCreate";
+import { useWhoAmI } from "../context/whoami/WhoAmI";
 
 const DetailLink = (identityProvider: IdentityProviderRepresentation) => {
   const { t } = useTranslation();
@@ -119,6 +120,7 @@ export default function IdentityProvidersSection() {
   const [selectedProvider, setSelectedProvider] =
     useState<IdentityProviderRepresentation>();
   const { addAlert, addError } = useAlerts();
+  const { userAccess, isLoading } = useWhoAmI();
 
   useFetch(
     async () => adminClient.identityProviders.find({ max: 1 }),
@@ -127,7 +129,6 @@ export default function IdentityProvidersSection() {
     },
     [key],
   );
-
   const loader = async (first?: number, max?: number, search?: string) => {
     const params: IdentityProvidersQuery = {
       first: first!,
@@ -191,8 +192,25 @@ export default function IdentityProvidersSection() {
     },
   });
 
+  if (isLoading) {
+    return null;
+  }
+
+  const isKeycloakAdmin = userAccess.isKeycloakAdmin();
+  const isClientAdminWithSsoPermission =
+    userAccess.isClientAdminWithSsoPermission();
+
   return (
-    <>
+    <div>
+      {isClientAdminWithSsoPermission && (
+        <style>
+          {`
+        #kc-main-content-page-container .pf-v5-c-toolbar {
+          display: none !important;
+        }
+      `}
+        </style>
+      )}
       <DeleteConfirm />
       {manageDisplayDialog && (
         <ManageOrderDialog
@@ -253,60 +271,64 @@ export default function IdentityProvidersSection() {
             loader={loader}
             isPaginated
             ariaLabelKey="identityProviders"
-            searchPlaceholderKey="searchForProvider"
-            toolbarItem={
-              <>
-                <ToolbarItem alignSelf="center">
-                  <Checkbox
-                    label={t("hideOrganizationLinkedIdps")}
-                    id="hideOrganizationLinkedIdps"
-                    data-testid="hideOrganizationLinkedIdps"
-                    isChecked={hide}
-                    onChange={(_event, check) => {
-                      setHide(check);
-                      refresh();
-                    }}
-                  />
-                </ToolbarItem>
-                <ToolbarItem>
-                  <Dropdown
-                    data-testid="addProviderDropdown"
-                    onOpenChange={(isOpen) => setAddProviderOpen(isOpen)}
-                    toggle={(ref) => (
-                      <MenuToggle
-                        ref={ref}
-                        onClick={() => setAddProviderOpen(!addProviderOpen)}
-                        variant="primary"
-                      >
-                        {t("addProvider")}
-                      </MenuToggle>
-                    )}
-                    isOpen={addProviderOpen}
-                  >
-                    <DropdownList>{identityProviderOptions()}</DropdownList>
-                  </Dropdown>
-                </ToolbarItem>
+            searchPlaceholderKey={!isKeycloakAdmin ? "" : "searchForProvider"}
+            {...(isKeycloakAdmin && {
+              toolbarItem: (
+                <>
+                  <ToolbarItem alignSelf="center">
+                    <Checkbox
+                      label={t("hideOrganizationLinkedIdps")}
+                      id="hideOrganizationLinkedIdps"
+                      data-testid="hideOrganizationLinkedIdps"
+                      isChecked={hide}
+                      onChange={(_event, check) => {
+                        setHide(check);
+                        refresh();
+                      }}
+                    />
+                  </ToolbarItem>
+                  <ToolbarItem>
+                    <Dropdown
+                      data-testid="addProviderDropdown"
+                      onOpenChange={(isOpen) => setAddProviderOpen(isOpen)}
+                      toggle={(ref) => (
+                        <MenuToggle
+                          ref={ref}
+                          onClick={() => setAddProviderOpen(!addProviderOpen)}
+                          variant="primary"
+                        >
+                          {t("addProvider")}
+                        </MenuToggle>
+                      )}
+                      isOpen={addProviderOpen}
+                    >
+                      <DropdownList>{identityProviderOptions()}</DropdownList>
+                    </Dropdown>
+                  </ToolbarItem>
 
-                <ToolbarItem>
-                  <Button
-                    data-testid="manageDisplayOrder"
-                    variant="link"
-                    onClick={() => setManageDisplayDialog(true)}
-                  >
-                    {t("manageDisplayOrder")}
-                  </Button>
-                </ToolbarItem>
-              </>
-            }
-            actions={[
-              {
-                title: t("delete"),
-                onRowClick: (provider) => {
-                  setSelectedProvider(provider);
-                  toggleDeleteDialog();
-                },
-              } as Action<IdentityProviderRepresentation>,
-            ]}
+                  <ToolbarItem>
+                    <Button
+                      data-testid="manageDisplayOrder"
+                      variant="link"
+                      onClick={() => setManageDisplayDialog(true)}
+                    >
+                      {t("manageDisplayOrder")}
+                    </Button>
+                  </ToolbarItem>
+                </>
+              ),
+            })}
+            {...(isKeycloakAdmin && {
+              actions: [
+                {
+                  title: t("delete"),
+                  onRowClick: (provider) => {
+                    setSelectedProvider(provider);
+                    toggleDeleteDialog();
+                  },
+                } as Action<IdentityProviderRepresentation>,
+              ],
+            })}
             columns={[
               {
                 name: "alias",
@@ -344,6 +366,6 @@ export default function IdentityProvidersSection() {
           />
         )}
       </PageSection>
-    </>
+    </div>
   );
 }

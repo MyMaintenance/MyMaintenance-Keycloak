@@ -23,6 +23,7 @@ export type BaseEnvironment = {
   darkMode: boolean;
   /** The scopes to be requested when sending authorization requests*/
   scope?: string;
+  dashboardLogo: string;
 };
 
 /**

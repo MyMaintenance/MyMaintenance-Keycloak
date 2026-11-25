@@ -8,6 +8,7 @@ import { DefaultSwitchControl } from "../../components/SwitchControl";
 import { JwksSettings } from "./JwksSettings";
 
 import "./discovery-settings.css";
+import { useWhoAmI } from "../../context/whoami/WhoAmI";
 
 const PKCE_METHODS = ["plain", "S256"] as const;
 
@@ -36,6 +37,17 @@ const Fields = ({ readOnly, isOIDC }: DiscoverySettingsProps) => {
     control,
     name: "config.supportsClientAssertions",
   });
+
+  const { userAccess, isLoading } = useWhoAmI();
+
+  if (isLoading) {
+    return null;
+  }
+
+  // MyMaintenance customisation: a client admin with SSO cannot change the
+  // signature validation or PKCE switches.
+  const isClientAdminWithSsoPermission =
+    userAccess.isClientAdminWithSsoPermission();
 
   return (
     <div className="pf-v5-c-form pf-m-horizontal">
@@ -91,20 +103,23 @@ const Fields = ({ readOnly, isOIDC }: DiscoverySettingsProps) => {
             name="config.validateSignature"
             label={t("validateSignature")}
             labelIcon={t("validateSignatureHelp")}
-            isDisabled={readOnly}
+            isDisabled={readOnly || isClientAdminWithSsoPermission}
             stringify
           />
           {(validateSignature === "true" ||
             jwtAuthorizationGrantEnabled === "true" ||
             supportsClientAssertions == "true") && (
-            <JwksSettings readOnly={readOnly} />
+            <JwksSettings
+              readOnly={readOnly}
+              isUseJwksUrlDisabled={isClientAdminWithSsoPermission}
+            />
           )}
         </>
       )}
       <DefaultSwitchControl
         name="config.pkceEnabled"
         label={t("pkceEnabled")}
-        isDisabled={readOnly}
+        isDisabled={readOnly || isClientAdminWithSsoPermission}
         stringify
       />
       {isPkceEnabled === "true" && (

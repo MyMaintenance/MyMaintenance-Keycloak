@@ -15,12 +15,14 @@ import { useAccess } from "../../context/access/Access";
 import { useRealm } from "../../context/realm-context/RealmContext";
 import { CustomUserFederationRouteParams } from "../routes/CustomUserFederation";
 import { toUserFederation } from "../routes/UserFederation";
+import { useWhoAmI } from "../../context/whoami/WhoAmI";
 
 type HeaderProps = {
   provider: string;
   save: () => void;
   dropdownItems?: ReactElement[];
   noDivider?: boolean;
+  isFormValid?: () => boolean;
 };
 
 export const Header = ({
@@ -28,6 +30,7 @@ export const Header = ({
   save,
   noDivider = false,
   dropdownItems = [],
+  isFormValid = () => true,
 }: HeaderProps) => {
   const { adminClient } = useAdminClient();
 
@@ -67,6 +70,29 @@ export const Header = ({
       }
     },
   });
+  const { userAccess, isLoading } = useWhoAmI();
+
+  if (isLoading) {
+    return null;
+  }
+
+  const isKeycloakAdmin = userAccess.isKeycloakAdmin();
+  const isClientAdmin = userAccess.isClientAdmin();
+
+  // MyMaintenance customisation: only a Keycloak admin can delete the
+  // provider.
+  const dropdownItems2 = isKeycloakAdmin
+    ? [
+        ...dropdownItems,
+        <DropdownItem
+          key="delete"
+          onClick={() => toggleDeleteDialog()}
+          data-testid="delete-cmd"
+        >
+          {t("deleteProvider")}
+        </DropdownItem>,
+      ]
+    : dropdownItems;
 
   return (
     <>
@@ -76,8 +102,19 @@ export const Header = ({
         name="config.enabled"
         defaultValue={["true"]}
         control={control}
-        render={({ field }) =>
-          !id ? (
+        render={({ field }) => {
+          // MyMaintenance customisation: the toggle is locked while the form
+          // is invalid, and a client admin only gets the dropdown when the
+          // provider is enabled and there is something in it.
+          const toggleEnabled = isFormValid();
+
+          const dropDownEnabled =
+            isKeycloakAdmin ||
+            (isClientAdmin &&
+              dropdownItems2.length > 0 &&
+              (field.value?.[0] === "true" || field.value === "true"));
+
+          return !id ? (
             <ViewHeader
               titleKey={t("addProvider", {
                 provider: provider,
@@ -88,18 +125,19 @@ export const Header = ({
             <ViewHeader
               divider={!noDivider}
               titleKey={provider}
-              dropdownItems={[
-                ...dropdownItems,
-                <DropdownItem
-                  key="delete"
-                  onClick={() => toggleDeleteDialog()}
-                  data-testid="delete-cmd"
-                >
-                  {t("deleteProvider")}
-                </DropdownItem>,
-              ]}
-              isReadOnly={!isManager}
-              isEnabled={field.value?.[0] === "true" || field.value === "true"}
+              isDropdownDisabled={!dropDownEnabled}
+              dropdownItems={dropdownItems2}
+              {...(isClientAdmin
+                ? {
+                    setupGuideUrl:
+                      "https://docs.google.com/document/d/1_-mafw_Oj9fMnNGXvUnJF6EpxctmIXm5eN8MMXA96NM/edit?usp=sharing",
+                  }
+                : {})}
+              isReadOnly={!isManager || !toggleEnabled}
+              isEnabled={
+                toggleEnabled &&
+                (field.value?.[0] === "true" || field.value === "true")
+              }
               onToggle={(value) => {
                 if (!value) {
                   toggleDisableDialog();
@@ -109,8 +147,8 @@ export const Header = ({
                 }
               }}
             />
-          )
-        }
+          );
+        }}
       />
     </>
   );

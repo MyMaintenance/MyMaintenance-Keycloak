@@ -12,6 +12,8 @@ import {
   useFetch,
 } from "@keycloak/keycloak-ui-shared";
 import {
+  Alert,
+  AlertActionLink,
   AlertVariant,
   Button,
   ButtonVariant,
@@ -25,6 +27,7 @@ import {
   Text,
   ToolbarItem,
 } from "@patternfly/react-core";
+import { saveAs } from "file-saver";
 import { useMemo, useState } from "react";
 import {
   Controller,
@@ -86,6 +89,7 @@ import DefaultTrustSettings from "./DefaultTrustSettings";
 import { IdpDomainsTab } from "./IdpDomainsTab";
 import { IdpOrganizationsTab } from "./IdpOrganizationsTab";
 import Oid4VpSettings from "./Oid4VpSettings";
+import { useWhoAmI } from "../../context/whoami/WhoAmI";
 
 type HeaderProps = {
   onChange: (value: boolean) => void;
@@ -102,6 +106,14 @@ type IdPWithMapperAttributes = IdentityProviderMapperRepresentation & {
   mapperId: string;
 };
 
+const certificateFileName = "MyRequests.cer";
+
+const toPem = (base64Der: string) => {
+  const cleaned = base64Der.replace(/\s+/g, "");
+  const lines = cleaned.match(/.{1,64}/g) ?? [cleaned];
+  return `-----BEGIN CERTIFICATE-----\n${lines.join("\n")}\n-----END CERTIFICATE-----\n`;
+};
+
 const Header = ({ onChange, value, save, toggleDeleteDialog }: HeaderProps) => {
   const { adminClient } = useAdminClient();
 
@@ -110,6 +122,19 @@ const Header = ({ onChange, value, save, toggleDeleteDialog }: HeaderProps) => {
   const [provider, setProvider] = useState<IdentityProviderRepresentation>();
   const { addAlert, addError } = useAlerts();
   const { setValue, formState, control } = useFormContext();
+  const { realm, realmRepresentation } = useRealm();
+
+  // Watched here so the "Download Certificate" header button can be shown
+  // for OIDC IdPs that authenticate with the realm — private_key_jwt
+  // (cert-based, the steady-state Entra ID flow) plus the client_secret_*
+  // variants so customers can grab the cert before switching modes.  The
+  // accompanying "Confirm Certificate Rotation" button stays exclusive to
+  // private_key_jwt since rotation only applies when the cert is actually
+  // signing.
+  const clientAuthMethod = useWatch({
+    control,
+    name: "config.clientAuthMethod",
+  });
 
   const validateSignature = useWatch({
     control,
@@ -169,6 +194,159 @@ const Header = ({ onChange, value, save, toggleDeleteDialog }: HeaderProps) => {
     }
   };
 
+  // validTo is a stringified ms-since-epoch in Keycloak's keys API, but parse
+  // defensively in case that changes.
+  const validToMs = (k: { validTo?: string | number }): number => {
+    if (k.validTo === undefined || k.validTo === "") {
+      return -Infinity;
+    }
+    const n = Number(k.validTo);
+    if (!Number.isNaN(n) && n > 0) return n;
+    const d = new Date(k.validTo as string).getTime();
+    return Number.isNaN(d) ? -Infinity : d;
+  };
+
+  // Holds the realm's RS256 key entries returned by /admin/realms/{realm}/keys
+  // so we can show the pending-rotation banner and pick the right cert to
+  // download without re-fetching on every interaction.
+  const [rs256Keys, setRs256Keys] = useState<
+    Array<{
+      kid?: string;
+      status?: string;
+      certificate?: string;
+      validTo?: string | number;
+      providerPriority?: number;
+    }>
+  >([]);
+  const [keysRefreshTrigger, setKeysRefreshTrigger] = useState(0);
+
+  useFetch(
+    () => adminClient.realms.getKeys({ realm }),
+    (keysMetaData) => {
+      const candidates = ((keysMetaData.keys ?? []) as Array<any>).filter(
+        (k) => k.algorithm === "RS256" && k.certificate,
+      );
+      setRs256Keys(candidates);
+    },
+    [realm, keysRefreshTrigger],
+  );
+
+  const activeRs256Key = useMemo(
+    () => rs256Keys.find((k) => k.status === "ACTIVE"),
+    [rs256Keys],
+  );
+
+  // Newest PASSIVE strictly newer than the ACTIVE = pending rotation.  Older
+  // PASSIVE keys (demoted-on-confirm leftovers kept around for JWKS
+  // verification) are ignored here so they don't masquerade as a rotation.
+  const pendingRotationKey = useMemo(() => {
+    if (!activeRs256Key) return undefined;
+    const activeValidTo = validToMs(activeRs256Key);
+    const passiveNewerThanActive = rs256Keys
+      .filter((k) => k.status === "PASSIVE" && validToMs(k) > activeValidTo)
+      .sort((a, b) => {
+        const diff = validToMs(b) - validToMs(a);
+        if (diff !== 0) return diff;
+        return (b.providerPriority ?? 0) - (a.providerPriority ?? 0);
+      });
+    return passiveNewerThanActive[0];
+  }, [rs256Keys, activeRs256Key]);
+
+  const hasPendingRotation = !!pendingRotationKey;
+
+  // Downloads the realm's RS256 X.509 certificate as PEM for the customer to
+  // upload to their Microsoft Entra ID App Registration.
+  //  - No pending rotation (steady state) → download the ACTIVE cert, which is
+  //    the one Keycloak uses to sign JWT client assertions right now.
+  //  - Pending rotation → download the newest PASSIVE cert (the one waiting to
+  //    be promoted).  The customer uploads this to Azure, then clicks Confirm
+  //    to promote it to ACTIVE so the matching private key starts signing.
+  // Older PASSIVE keys (demoted-on-confirm leftovers) are never picked.
+  const downloadRealmCertificate = async () => {
+    try {
+      const chosen = pendingRotationKey ?? activeRs256Key;
+      if (!chosen?.certificate) {
+        addError("downloadCertificateError", new Error(t("noActiveRs256Cert")));
+        return;
+      }
+      saveAs(
+        new Blob([toPem(chosen.certificate)], {
+          type: "application/x-x509-ca-cert",
+        }),
+        certificateFileName,
+      );
+      addAlert(t("downloadCertificateSuccess"));
+    } catch (error) {
+      addError("downloadCertificateError", error);
+    }
+  };
+
+  // Client-secret variant: rotation isn't part of the flow when the IdP
+  // doesn't sign with the cert, so always hand over the ACTIVE cert and
+  // ignore any pending PASSIVE key in the realm.
+  const downloadActiveRealmCertificate = async () => {
+    try {
+      if (!activeRs256Key?.certificate) {
+        addError("downloadCertificateError", new Error(t("noActiveRs256Cert")));
+        return;
+      }
+      saveAs(
+        new Blob([toPem(activeRs256Key.certificate)], {
+          type: "application/x-x509-ca-cert",
+        }),
+        certificateFileName,
+      );
+      addAlert(t("downloadCertificateSuccess"));
+    } catch (error) {
+      addError("downloadCertificateError", error);
+    }
+  };
+
+  const certRotationApiUrl: string | undefined =
+    realmRepresentation.attributes?.["mym_cert_rotation_api_url"];
+
+  const callCertRotationApi = async (action: "confirm" | "cancel") => {
+    if (!certRotationApiUrl) {
+      throw new Error(t("certRotationApiUnavailable"));
+    }
+    const response = await fetch(`${certRotationApiUrl}/cert-rotation`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ realmId: realm, action }),
+    });
+    if (!response.ok) {
+      const text = await response.text().catch(() => response.statusText);
+      throw new Error(text || response.statusText);
+    }
+  };
+
+  const confirmCertRotation = async () => {
+    try {
+      await callCertRotationApi("confirm");
+      addAlert(t("confirmCertificateRotationSuccess"), AlertVariant.success);
+      setKeysRefreshTrigger((n) => n + 1);
+    } catch (error) {
+      addError("confirmCertificateRotationError", error);
+    }
+  };
+
+  const cancelCertRotation = async () => {
+    try {
+      await callCertRotationApi("cancel");
+      addAlert(t("cancelCertificateRotationSuccess"), AlertVariant.success);
+      setKeysRefreshTrigger((n) => n + 1);
+    } catch (error) {
+      addError("cancelCertificateRotationError", error);
+    }
+  };
+
+  const formatCertValidTo = (k?: { validTo?: string | number }) => {
+    if (!k) return "";
+    const ms = validToMs(k);
+    if (!Number.isFinite(ms)) return "";
+    return new Date(ms).toLocaleString();
+  };
+
   const reloadSamlKeys = async (alias: string) => {
     try {
       const result = await adminClient.identityProviders.reloadKeys({
@@ -184,9 +362,43 @@ const Header = ({ onChange, value, save, toggleDeleteDialog }: HeaderProps) => {
     }
   };
 
+  const { userAccess, isLoading } = useWhoAmI();
+
+  if (isLoading) {
+    return null;
+  }
+
+  const isKeycloakAdmin = userAccess.isKeycloakAdmin();
+  const isClientAdminWithSsoPermission =
+    userAccess.isClientAdminWithSsoPermission();
+
+  // if (!isKeycloakAdmin && !isClientAdminWithSsoPermission) {
+  //   return <h3 style={{ padding: "16px" }}>Access Denied</h3>;
+  // }
+
   return (
     <>
       <DisableConfirm />
+      {clientAuthMethod === "private_key_jwt" && hasPendingRotation && (
+        <Alert
+          variant="warning"
+          isInline
+          title={t("pendingCertRotationTitle")}
+          data-testid="pending-cert-rotation-banner"
+          actionLinks={
+            certRotationApiUrl ? (
+              <AlertActionLink onClick={cancelCertRotation}>
+                {t("cancelCertificateRotation")}
+              </AlertActionLink>
+            ) : undefined
+          }
+        >
+          {t("pendingCertRotationDescription", {
+            pendingExpiry: formatCertValidTo(pendingRotationKey),
+            activeExpiry: formatCertValidTo(activeRs256Key),
+          })}
+        </Alert>
+      )}
       <ViewHeader
         titleKey={toUpperCase(
           provider
@@ -195,46 +407,56 @@ const Header = ({ onChange, value, save, toggleDeleteDialog }: HeaderProps) => {
               : provider.providerId!
             : "",
         )}
+        {...(isClientAdminWithSsoPermission
+          ? {
+              setupGuideUrl:
+                clientAuthMethod === "private_key_jwt"
+                  ? "https://docs.google.com/document/d/1SHa0Y-ASvLdzn5aJv8IznZOVTaTKhFA5RiflkfWDo0k/edit?usp=sharing"
+                  : "https://docs.google.com/document/d/1C1FuhyE9YBuI-kWvWwSrFjVfTXNO8f-CYXu-BRW5hwk/edit?usp=sharing",
+            }
+          : {})}
         divider={false}
-        dropdownItems={[
-          ...(provider?.providerId?.includes("saml") &&
-          validateSignature === "true" &&
-          useMetadataDescriptorUrl === "true" &&
-          metadataDescriptorUrl &&
-          !formState.isDirty &&
-          value
-            ? [
-                <DropdownItem
-                  key="reloadKeys"
-                  onClick={() => reloadSamlKeys(provider.alias!)}
-                >
-                  {t("reloadKeys")}
-                </DropdownItem>,
-              ]
-            : provider?.providerId?.includes("saml") &&
-                validateSignature === "true" &&
-                useMetadataDescriptorUrl !== "true" &&
-                metadataDescriptorUrl &&
-                !formState.isDirty
+        {...(isKeycloakAdmin && {
+          dropdownItems: [
+            ...(provider?.providerId?.includes("saml") &&
+            validateSignature === "true" &&
+            useMetadataDescriptorUrl === "true" &&
+            metadataDescriptorUrl &&
+            !formState.isDirty &&
+            value
               ? [
                   <DropdownItem
-                    key="importKeys"
-                    onClick={() =>
-                      importSamlKeys(
-                        provider.providerId!,
-                        metadataDescriptorUrl,
-                      )
-                    }
+                    key="reloadKeys"
+                    onClick={() => reloadSamlKeys(provider.alias!)}
                   >
-                    {t("importKeys")}
+                    {t("reloadKeys")}
                   </DropdownItem>,
                 ]
-              : []),
-          <Divider key="separator" />,
-          <DropdownItem key="delete" onClick={() => toggleDeleteDialog()}>
-            {t("delete")}
-          </DropdownItem>,
-        ]}
+              : provider?.providerId?.includes("saml") &&
+                  validateSignature === "true" &&
+                  useMetadataDescriptorUrl !== "true" &&
+                  metadataDescriptorUrl &&
+                  !formState.isDirty
+                ? [
+                    <DropdownItem
+                      key="importKeys"
+                      onClick={() =>
+                        importSamlKeys(
+                          provider.providerId!,
+                          metadataDescriptorUrl,
+                        )
+                      }
+                    >
+                      {t("importKeys")}
+                    </DropdownItem>,
+                  ]
+                : []),
+            <Divider key="separator" />,
+            <DropdownItem key="delete" onClick={() => toggleDeleteDialog()}>
+              {t("delete")}
+            </DropdownItem>,
+          ],
+        })}
         isEnabled={value}
         onToggle={(value) => {
           if (!value) {
@@ -244,6 +466,42 @@ const Header = ({ onChange, value, save, toggleDeleteDialog }: HeaderProps) => {
             save();
           }
         }}
+        preToggleButton={
+          clientAuthMethod === "private_key_jwt" ? (
+            <>
+              <Button
+                variant="secondary"
+                onClick={downloadRealmCertificate}
+                isDisabled={!value}
+                data-testid="download-realm-certificate"
+              >
+                {hasPendingRotation
+                  ? t("downloadPendingRotationCertificate")
+                  : t("downloadCertificate")}
+              </Button>
+              <Button
+                variant="primary"
+                onClick={confirmCertRotation}
+                isDisabled={!value}
+                data-testid="confirm-cert-rotation"
+                style={{ marginLeft: "8px" }}
+              >
+                {t("confirmCertificateRotation")}
+              </Button>
+            </>
+          ) : clientAuthMethod === "client_secret_basic" ||
+            clientAuthMethod === "client_secret_post" ||
+            clientAuthMethod === "client_secret_jwt" ? (
+            <Button
+              variant="secondary"
+              onClick={downloadActiveRealmCertificate}
+              isDisabled={!value}
+              data-testid="download-realm-certificate"
+            >
+              {t("downloadCertificate")}
+            </Button>
+          ) : undefined
+        }
       />
     </>
   );
@@ -477,6 +735,15 @@ export default function DetailSettings() {
     control,
     name: "config.jwtAuthorizationGrantEnabled",
   });
+
+  const { userAccess, isLoading } = useWhoAmI();
+
+  if (isLoading) {
+    return null;
+  }
+
+  const isClientAdminWithSsoPermission =
+    userAccess.isClientAdminWithSsoPermission();
 
   if (!provider) {
     return <KeycloakSpinner />;
@@ -808,7 +1075,9 @@ export default function DetailSettings() {
               isSPIFFE ||
               isKubernetes ||
               isJWTAuthorizationGrant ||
-              isDefaultTrust
+              isDefaultTrust ||
+              // MyMaintenance customisation: hidden from a client admin
+              isClientAdminWithSsoPermission
             }
             data-testid="mappers-tab"
             title={<TabTitleText>{t("mappers")}</TabTitleText>}
@@ -885,45 +1154,50 @@ export default function DetailSettings() {
               ]}
             />
           </Tab>
-          {(provider.organizationLinks?.length ?? 0) > 0 && (
-            <Tab
-              id="organizations"
-              data-testid="organizationsTab"
-              title={<TabTitleText>{t("organizations")}</TabTitleText>}
-              {...organizationsTab}
-            >
-              <Tabs
-                activeKey={orgSubTab}
-                onSelect={(_, key) => setOrgSubTab(key as string)}
-                mountOnEnter
+          {!isClientAdminWithSsoPermission &&
+            (provider.organizationLinks?.length ?? 0) > 0 && (
+              <Tab
+                id="organizations"
+                data-testid="organizationsTab"
+                title={<TabTitleText>{t("organizations")}</TabTitleText>}
+                {...organizationsTab}
               >
-                <Tab
-                  id="org-list"
-                  eventKey="org-list"
-                  title={<TabTitleText>{t("organizations")}</TabTitleText>}
+                <Tabs
+                  activeKey={orgSubTab}
+                  onSelect={(_, key) => setOrgSubTab(key as string)}
+                  mountOnEnter
                 >
-                  <IdpOrganizationsTab alias={alias} onLinksChange={refresh} />
-                </Tab>
-                <Tab
-                  id="org-domains"
-                  eventKey="org-domains"
-                  title={<TabTitleText>{t("domains")}</TabTitleText>}
-                >
-                  <IdpDomainsTab alias={alias} />
-                </Tab>
-              </Tabs>
-            </Tab>
-          )}
-          {isFeatureEnabled(Feature.AdminFineGrainedAuthz) && (
-            <Tab
-              id="permissions"
-              data-testid="permissionsTab"
-              title={<TabTitleText>{t("permissions")}</TabTitleText>}
-              {...permissionsTab}
-            >
-              <PermissionsTab id={alias} type="identityProviders" />
-            </Tab>
-          )}
+                  <Tab
+                    id="org-list"
+                    eventKey="org-list"
+                    title={<TabTitleText>{t("organizations")}</TabTitleText>}
+                  >
+                    <IdpOrganizationsTab
+                      alias={alias}
+                      onLinksChange={refresh}
+                    />
+                  </Tab>
+                  <Tab
+                    id="org-domains"
+                    eventKey="org-domains"
+                    title={<TabTitleText>{t("domains")}</TabTitleText>}
+                  >
+                    <IdpDomainsTab alias={alias} />
+                  </Tab>
+                </Tabs>
+              </Tab>
+            )}
+          {!isClientAdminWithSsoPermission &&
+            isFeatureEnabled(Feature.AdminFineGrainedAuthz) && (
+              <Tab
+                id="permissions"
+                data-testid="permissionsTab"
+                title={<TabTitleText>{t("permissions")}</TabTitleText>}
+                {...permissionsTab}
+              >
+                <PermissionsTab id={alias} type="identityProviders" />
+              </Tab>
+            )}
           {realmRepresentation.adminEventsEnabled &&
             hasAccess("view-events") && (
               <Tab

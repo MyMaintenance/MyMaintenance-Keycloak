@@ -26,6 +26,7 @@ import { FormGroupField } from "../component/FormGroupField";
 import { SwitchField } from "../component/SwitchField";
 import { TextField } from "../component/TextField";
 import { TimeSelector } from "../../components/time-selector/TimeSelector";
+import { useWhoAmI } from "../../context/whoami/WhoAmI";
 
 const LoginFlow = ({
   field,
@@ -47,6 +48,16 @@ const LoginFlow = ({
       setFlows(flows.filter((flow) => flow.providerId === "basic-flow")),
     [],
   );
+
+  const { userAccess, isLoading } = useWhoAmI();
+
+  if (isLoading) {
+    return null;
+  }
+
+  // MyMaintenance customisation: read-only for a client admin with SSO.
+  const isClientAdminWithSsoPermission =
+    userAccess.isClientAdminWithSsoPermission();
 
   return (
     <FormGroup
@@ -70,6 +81,7 @@ const LoginFlow = ({
             variant={SelectVariant.single}
             aria-label={t(label)}
             isOpen={open}
+            isDisabled={isClientAdminWithSsoPermission}
           >
             {[
               ...(defaultValue === ""
@@ -178,6 +190,16 @@ export const AdvancedSettings = ({
     [storedTokensReadableSupported],
   );
 
+  const { userAccess, isLoading } = useWhoAmI();
+
+  if (isLoading) {
+    return null;
+  }
+
+  // MyMaintenance customisation: read-only for a client admin with SSO.
+  const isClientAdminWithSsoPermission =
+    userAccess.isClientAdminWithSsoPermission();
+
   return (
     <>
       {!isOIDC && !isSAML && !isOAuth2 && (
@@ -189,14 +211,21 @@ export const AdvancedSettings = ({
           label="storeTokenInSession"
           fieldType="boolean"
           defaultValue={!isSAML}
+          isReadOnly={isClientAdminWithSsoPermission}
         />
       )}
-      <SwitchField field="storeToken" label="storeTokens" fieldType="boolean" />
+      <SwitchField
+        field="storeToken"
+        label="storeTokens"
+        fieldType="boolean"
+        isReadOnly={isClientAdminWithSsoPermission}
+      />
       {storedTokensReadableSupported && hasBrokerReadTokenRole && (
         <SwitchField
           field="addReadTokenRoleOnCreate"
           label="storedTokensReadable"
           fieldType="boolean"
+          isReadOnly={isClientAdminWithSsoPermission}
         />
       )}
       {!isOIDC && !isSAML && !isOAuth2 && (
@@ -209,18 +238,29 @@ export const AdvancedSettings = ({
         </>
       )}
       {isOIDC && (
-        <SwitchField field="config.isAccessTokenJWT" label="isAccessTokenJWT" />
+        <SwitchField
+          field="config.isAccessTokenJWT"
+          label="isAccessTokenJWT"
+          isReadOnly={isClientAdminWithSsoPermission}
+        />
       )}
-      <SwitchField field="trustEmail" label="trustEmail" fieldType="boolean" />
+      <SwitchField
+        field="trustEmail"
+        label="trustEmail"
+        fieldType="boolean"
+        isReadOnly={isClientAdminWithSsoPermission}
+      />
       <SwitchField
         field="linkOnly"
         label="accountLinkingOnly"
         fieldType="boolean"
+        isReadOnly={isClientAdminWithSsoPermission}
       />
       <SwitchField
         field="hideOnLogin"
         label="hideOnLoginPage"
         fieldType="boolean"
+        isReadOnly={isClientAdminWithSsoPermission}
       />
       <SelectControl
         name="config.showInAccountConsole"
@@ -236,6 +276,7 @@ export const AdvancedSettings = ({
           defaultValue: SHOW_IN_ACCOUNT_CONSOLE_VALUES[0],
           rules: { required: t("required") },
         }}
+        isDisabled={isClientAdminWithSsoPermission}
       />
 
       {((!isSAML && !isOAuth2) || isOIDC) && (
@@ -253,6 +294,7 @@ export const AdvancedSettings = ({
                 onChange={(_event, value) => {
                   field.onChange(value.toString());
                 }}
+                isDisabled={isClientAdminWithSsoPermission}
               />
             )}
           />
@@ -347,6 +389,7 @@ export const AdvancedSettings = ({
                     });
                   }
                 }}
+                isDisabled={isClientAdminWithSsoPermission}
               />
             )}
           />
@@ -365,22 +408,26 @@ export const AdvancedSettings = ({
             defaultValue: SYNC_MODES[0],
             rules: { required: t("required") },
           }}
+          isDisabled={isClientAdminWithSsoPermission}
         />
       )}
       <SwitchField
         field="config.caseSensitiveOriginalUsername"
         label="caseSensitiveOriginalUsername"
+        isReadOnly={isClientAdminWithSsoPermission}
       />
       {hasAccess("manage-realm") && (
         <SwitchField
           field="config.allowAdminRoleMapping"
           label="allowAdminRoleMapping"
+          isReadOnly={isClientAdminWithSsoPermission}
         />
       )}
       {isClientAuthFederatedEnabled && isOIDC && (
         <SwitchField
           field="config.supportsClientAssertions"
           label="supportsClientAssertions"
+          isReadOnly={isClientAdminWithSsoPermission}
         />
       )}
       {isClientAuthFederatedEnabled &&
@@ -389,6 +436,7 @@ export const AdvancedSettings = ({
           <SwitchField
             field="config.supportsClientAssertionReuse"
             label="supportsClientAssertionReuse"
+            isReadOnly={isClientAdminWithSsoPermission}
           />
         )}
       {isOIDC &&
@@ -399,6 +447,7 @@ export const AdvancedSettings = ({
           <SwitchField
             field="config.allowClientIdAsAudience"
             label="allowClientIdAsAudience"
+            isReadOnly={isClientAdminWithSsoPermission}
           />
         )}
       {isOIDC &&
@@ -418,6 +467,7 @@ export const AdvancedSettings = ({
                   value={field.value!}
                   onChange={field.onChange}
                   units={["minute", "hour", "day"]}
+                  isDisabled={isClientAdminWithSsoPermission}
                 />
               )}
             />

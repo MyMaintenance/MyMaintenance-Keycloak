@@ -35,7 +35,7 @@ import { useAlerts } from "@keycloak/keycloak-ui-shared";
 import { FormAccess } from "../components/form/FormAccess";
 import { GroupPickerDialog } from "../components/group/GroupPickerDialog";
 import { useAccess } from "../context/access/Access";
-import { useWhoAmI } from "../context/whoami/WhoAmI";
+import { clientAdminUserName, useWhoAmI } from "../context/whoami/WhoAmI";
 import { emailRegexPattern } from "../util";
 import useFormatDate from "../utils/useFormatDate";
 import { FederatedUserLink } from "./FederatedUserLink";
@@ -86,7 +86,7 @@ export const UserForm = ({
   const { hasAccess } = useAccess();
   const isManager = hasAccess("manage-users");
   const canViewFederationLink = hasAccess("view-realm");
-  const { whoAmI } = useWhoAmI();
+  const { whoAmI, userAccess, isLoading } = useWhoAmI();
 
   const termsAndConditionsAcceptedDate = toTermsAndConditionsAcceptedDate(
     user?.attributes?.[TERMS_AND_CONDITIONS_ATTRIBUTE],
@@ -184,6 +184,14 @@ export const UserForm = ({
     }
   };
 
+  if (isLoading) {
+    return null;
+  }
+
+  // MyMaintenance customisation: a client admin cannot change the client
+  // admin account's required actions or email verified flag.
+  const isClientAdmin = userAccess.isClientAdmin();
+
   return (
     <FormAccess
       isHorizontal
@@ -255,6 +263,7 @@ export const UserForm = ({
           name="requiredActions"
           label="requiredUserActions"
           help="requiredUserActionsHelp"
+          isDisabled={isClientAdmin && user?.username == clientAdminUserName}
         />
         {user?.federationLink && canViewFederationLink && (
           <FormGroup
@@ -275,6 +284,9 @@ export const UserForm = ({
               name="emailVerified"
               label={t("emailVerified")}
               labelIcon={t("emailVerifiedHelp")}
+              isDisabled={
+                isClientAdmin && user?.username == clientAdminUserName
+              }
             />
             {termsAndConditionsAcceptedDate && (
               <FormGroup

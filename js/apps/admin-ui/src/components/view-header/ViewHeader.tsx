@@ -46,6 +46,14 @@ export type ViewHeaderProps = {
   isReadOnly?: boolean;
   actionDropdownTitle?: string;
   noTranslate?: boolean;
+  /** MyMaintenance customisation: link to a setup guide beside the title. */
+  setupGuideUrl?: string;
+  /**
+   * Optional content rendered as a Toolbar item immediately before the
+   * Enabled/Disabled switch. Used (e.g. on the IdP details page) to surface
+   * page-level actions like "Download Certificate" alongside the toggle.
+   */
+  preToggleButton?: ReactNode;
 };
 
 export type ViewHeaderBadge = {
@@ -73,6 +81,8 @@ export const ViewHeader = ({
   isReadOnly = false,
   actionDropdownTitle = "action",
   noTranslate = false,
+  setupGuideUrl,
+  preToggleButton,
 }: ViewHeaderProps) => {
   const { t, i18n } = useTranslation();
   const { enabled } = useHelp();
@@ -105,6 +115,15 @@ export const ViewHeader = ({
                     {noTranslate || !i18n.exists(titleKey)
                       ? titleKey
                       : t(titleKey)}
+                    {setupGuideUrl && (
+                      <FormattedLink
+                        title={"Guide - How to configure"}
+                        href={setupGuideUrl}
+                        isInline
+                        style={{ fontSize: 16, paddingLeft: 20 }}
+                        className="pf-u-ml-md"
+                      />
+                    )}
                   </Text>
                 </TextContent>
               </LevelItem>
@@ -129,6 +148,9 @@ export const ViewHeader = ({
           <LevelItem>
             <Toolbar className="pf-v5-u-p-0">
               <ToolbarContent>
+                {preToggleButton && (
+                  <ToolbarItem>{preToggleButton}</ToolbarItem>
+                )}
                 {onToggle && (
                   <ToolbarItem alignSelf="center">
                     <Switch

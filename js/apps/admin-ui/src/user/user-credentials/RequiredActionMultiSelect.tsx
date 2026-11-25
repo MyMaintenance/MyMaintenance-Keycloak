@@ -16,6 +16,7 @@ export type RequiredActionMultiSelectProps<
   name: P;
   label: string;
   help: string;
+  isDisabled?: boolean;
 };
 
 export const RequiredActionMultiSelect = <
@@ -25,6 +26,7 @@ export const RequiredActionMultiSelect = <
   name,
   label,
   help,
+  isDisabled,
 }: RequiredActionMultiSelectProps<T, P>) => {
   const { adminClient } = useAdminClient();
 
@@ -62,6 +64,7 @@ export const RequiredActionMultiSelect = <
         key: alias!,
         value: name || alias!,
       }))}
+      isDisabled={isDisabled}
     />
   );
 };

@@ -6,6 +6,7 @@ import { sortProviders } from "../../util";
 import { ClientIdSecret } from "../component/ClientIdSecret";
 import { SwitchField } from "../component/SwitchField";
 import { TextField } from "../component/TextField";
+import { useWhoAmI } from "../../context/whoami/WhoAmI";
 
 const clientAuthentications = [
   "client_secret_post",
@@ -26,6 +27,31 @@ export const OIDCAuthentication = ({ create = true }: { create?: boolean }) => {
     name: "config.clientAuthMethod",
   });
 
+  const alias = useWatch({
+    control: control,
+    name: "alias",
+  });
+
+  const { userAccess, isLoading } = useWhoAmI();
+
+  if (isLoading) {
+    return null;
+  }
+
+  // const isKeycloakAdmin = userAccess.isKeycloakAdmin();
+  const isClientAdminWithSsoPermission =
+    userAccess.isClientAdminWithSsoPermission();
+
+  // Lock the JWT-assertion fields for the Client Admin on the
+  // microsoft_entra_id IdP when certificate mode is active.  MyMaintenance's
+  // update_entra_id_client_auth.py owns these values (clientAssertionSigningAlg,
+  // clientAssertionAudience, jwtX509HeadersEnabled) and a manual edit here
+  // would silently break the JWT client assertion flow with Microsoft Entra ID.
+  const isEntraIdCertModeForClientAdmin =
+    alias === "microsoft_entra_id" &&
+    clientAuthMethod === "private_key_jwt" &&
+    userAccess.isClientAdmin();
+
   return (
     <>
       <SelectControl
@@ -39,6 +65,7 @@ export const OIDCAuthentication = ({ create = true }: { create?: boolean }) => {
         controller={{
           defaultValue: clientAuthentications[0],
         }}
+        isDisabled={isClientAdminWithSsoPermission}
       />
       <ClientIdSecret
         secretRequired={clientAuthMethod !== "private_key_jwt"}
@@ -55,18 +82,23 @@ export const OIDCAuthentication = ({ create = true }: { create?: boolean }) => {
         controller={{
           defaultValue: "",
         }}
+        isDisabled={
+          isClientAdminWithSsoPermission || isEntraIdCertModeForClientAdmin
+        }
       />
       {(clientAuthMethod === "private_key_jwt" ||
         clientAuthMethod === "client_secret_jwt") && (
         <TextField
           field="config.clientAssertionAudience"
           label="clientAssertionAudience"
+          isReadOnly={isEntraIdCertModeForClientAdmin}
         />
       )}
       {clientAuthMethod === "private_key_jwt" && (
         <SwitchField
           field="config.jwtX509HeadersEnabled"
           label="jwtX509HeadersEnabled"
+          isReadOnly={isEntraIdCertModeForClientAdmin}
         />
       )}
     </>

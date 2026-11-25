@@ -120,6 +120,33 @@ const KebabDropdown = ({ onClick, isDisabled }: KebabDropdownProps) => {
 
 type RealmRow = RealmNameRepresentation & { id: string };
 
+const PINNED_FIRST_REALMS = ["mym_sso"];
+const PINNED_LAST_REALMS = ["master", "mym_admin"];
+
+/** MyMaintenance customisation, carried over from the 26.1.2 realm selector. */
+const sortRealmsForMyMaintenance = (
+  realms: RealmNameRepresentation[],
+  currentRealm: string,
+  locale: string,
+): RealmNameRepresentation[] => {
+  const byName = (name: string) =>
+    realms.find((r) => r.name.toLowerCase() === name);
+  const pinned = [...PINNED_FIRST_REALMS, ...PINNED_LAST_REALMS];
+  const others = realms
+    .filter((r) => !pinned.includes(r.name.toLowerCase()))
+    .sort((a, b) => {
+      if (a.name === currentRealm) return -1;
+      if (b.name === currentRealm) return 1;
+      return a.name.localeCompare(b.name, locale);
+    });
+
+  return [
+    ...PINNED_FIRST_REALMS.map(byName),
+    ...others,
+    ...PINNED_LAST_REALMS.map(byName),
+  ].filter((r): r is RealmNameRepresentation => !!r);
+};
+
 export default function RealmSection() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -141,7 +168,20 @@ export default function RealmSection() {
         "ui-ext/realms/names",
         { first: `${first}`, max: `${max}`, search: search || "" },
       );
-      return result.map((r) => ({ ...r, id: r.name }));
+      // MyMaintenance customisation: order the page as mym_sso first, then
+      // the other realms (current realm first, then by name), then master
+      // and mym_admin last. The table asks for one row more than a page to
+      // know if there is a next page; that probe row is left where it is.
+      const pageSize = max !== undefined ? Math.max(max - 1, 0) : result.length;
+      const ordered = [
+        ...sortRealmsForMyMaintenance(
+          result.slice(0, pageSize),
+          realm,
+          whoAmI.locale,
+        ),
+        ...result.slice(pageSize),
+      ];
+      return ordered.map((r) => ({ ...r, id: r.name }));
     } catch (error) {
       if (error instanceof NetworkError && error.response.status < 500) {
         return [];
